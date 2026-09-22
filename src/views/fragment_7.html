@@ -1,0 +1,291 @@
+  <template x-teleport="body">
+<div x-show="showModalSaida" x-cloak class="app-modal" @click.self="showModalSaida=false" x-transition.opacity role="dialog" aria-modal="true">
+    <div class="app-modal-card modal-md p-5 space-y-4 border-2 border-red-500/40 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+        <div class="flex items-center gap-2">
+          <span x-html="getIcon('arrowUp')"></span>
+          <div>
+            <h3 class="font-bold text-base text-red-400">Registar Saída / Despesa de Caixa</h3>
+            <p class="text-xs text-[var(--text-dim)]">Pagamento de ração, vacinas, salários, energia ou manutenção</p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-xs text-base text-[var(--text-dim)] hover:text-white" @click="showModalSaida=false" aria-label="Fechar"><span x-html="getIcon('x')"></span></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="label block mb-1">Categoria da Despesa</label>
+          <select class="input text-xs" x-model="newSaidaCategory">
+            <option value="Ração">Ração & Alimentação</option>
+            <option value="Pintos">Compra de Pintos de 1 Dia</option>
+            <option value="Vacinas">Vacinas & Medicamentos</option>
+            <option value="Energia">Energia / Eletricidade / Aquecimento</option>
+            <option value="Água">Água & Saneamento</option>
+            <option value="Salários">Salários & Mão de Obra</option>
+            <option value="Transporte">Transporte & Combustível</option>
+            <option value="Embalagens">Embalagens & Sacos</option>
+            <option value="Manutenção">Manutenção & Infraestrutura</option>
+            <option value="Outros">Outras Despesas</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="label block mb-1">Descrição do Pagamento</label>
+          <input type="text" class="input text-xs" placeholder="Ex: Compra de 20 sacos de ração Terminação Higest" x-model="newSaidaDesc">
+        </div>
+
+        <div x-show="newSaidaCategory==='Ração'" class="p-3 bg-slate-900/60 rounded-xl border border-slate-700/60 space-y-2">
+          <p class="font-bold text-amber-300 text-[11px]"> Integração Automática com Stock</p>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="label block mb-1">Quantidade de Sacos (50kg)</label>
+              <input type="number" min="1" class="input text-xs font-bold" placeholder="Qtd Sacos" x-model="newSaidaBagsQty">
+            </div>
+            <div>
+              <label class="label block mb-1">Item de Stock Vinculado</label>
+              <select class="input text-xs" x-model="newSaidaStockItemId">
+                <template x-for="stk in stockItems.filter(i => i.category==='Ração')" :key="stk.id">
+                  <option :value="stk.id" x-text="stk.name + ' (' + stk.qty + ' ' + stk.unit + ' em stock)'"></option>
+                </template>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label block mb-1">Valor Pago (MT)</label>
+            <input type="number" min="0" step="10" class="input text-xs font-bold font-mono text-red-400" placeholder="Ex: 38000" x-model="newSaidaAmount">
+          </div>
+          <div>
+            <label class="label block mb-1">Data da Saída</label>
+            <input type="date" class="input text-xs" x-model="newSaidaDate">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label block mb-1">Forma de Pagamento</label>
+            <select class="input text-xs" x-model="newSaidaMethod">
+              <option value="Dinheiro">Dinheiro Físico</option>
+              <option value="M-Pesa">M-Pesa (+258)</option>
+              <option value="e-Mola">e-Mola (+258)</option>
+              <option value="Transferência">Transf. Bancária (BIM/BCI)</option>
+              <option value="Cheque">Cheque</option>
+            </select>
+          </div>
+          <div>
+            <label class="label block mb-1">Estado</label>
+            <select class="input text-xs" x-model="newSaidaStatus">
+              <option value="Pago">Pago / Liquidado</option>
+              <option value="Pendente">Pendente / A Pagar</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 justify-end pt-2 border-t border-[var(--border-color)]">
+        <button type="button" class="btn btn-ghost btn-sm text-xs" @click="showModalSaida=false">Cancelar</button>
+        <button type="button" class="btn btn-sm text-xs font-bold !bg-red-600 !text-white hover:!bg-red-700" @click="saveModalSaida()">
+          <span x-html="getIcon('check')"></span> <span>Guardar Saída</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+  <!-- Modal: Registar Pagamento de Cliente (Amortização de Dívida) -->
+  <template x-teleport="body">
+<div x-show="showModalPagamento" x-cloak class="app-modal" @click.self="showModalPagamento=false" x-transition.opacity role="dialog" aria-modal="true">
+    <div class="app-modal-card modal-md p-5 space-y-4 border-2 border-amber-500/40 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+        <div class="flex items-center gap-2">
+          <span x-html="getIcon('caixa')"></span>
+          <div>
+            <h3 class="font-bold text-base text-amber-400">Registar Pagamento de Cliente</h3>
+            <p class="text-xs text-[var(--text-dim)]">Amortização total ou parcial de dívida pendente</p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-xs text-base text-[var(--text-dim)] hover:text-white" @click="showModalPagamento=false" aria-label="Fechar"><span x-html="getIcon('x')"></span></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="label block mb-1">Selecione o Cliente</label>
+          <select class="input text-xs font-bold" x-model="newPayClientId">
+            <option value="">-- Escolha um Cliente --</option>
+            <template x-for="c in clients" :key="c.id">
+              <option :value="c.id" x-text="c.name + ' — Dívida: ' + fmtMT(c.debt)"></option>
+            </template>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label block mb-1">Valor Amortizado (MT)</label>
+            <input type="number" min="1" step="10" class="input text-xs font-bold font-mono text-emerald-400" placeholder="Ex: 5000" x-model="newPayAmount">
+          </div>
+          <div>
+            <label class="label block mb-1">Data</label>
+            <input type="date" class="input text-xs" x-model="newPayDate">
+          </div>
+        </div>
+
+        <div>
+          <label class="label block mb-1">Método de Recebimento</label>
+          <select class="input text-xs" x-model="newPayMethod">
+            <option value="M-Pesa">M-Pesa</option>
+            <option value="Dinheiro">Dinheiro Físico</option>
+            <option value="e-Mola">e-Mola</option>
+            <option value="Ponto24">Ponto24 / POS</option>
+            <option value="Transferência">Transf. Bancária (BIM/BCI)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex gap-2 justify-end pt-2 border-t border-[var(--border-color)]">
+        <button type="button" class="btn btn-ghost btn-sm text-xs" @click="showModalPagamento=false">Cancelar</button>
+        <button type="button" class="btn btn-gold btn-sm text-xs font-bold" @click="saveModalPagamento()">
+          <span x-html="getIcon('check')"></span> <span>Confirmar Recebimento</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+  <!-- Modal: Adicionar Produto ao Controlo -->
+  <template x-teleport="body">
+<div x-show="showAddProductModal" x-cloak class="app-modal" @click.self="showAddProductModal=false" x-transition.opacity role="dialog" aria-modal="true">
+    <div class="app-modal-card modal-sm p-5 space-y-4 border border-[var(--border-color)] shadow-2xl">
+      <div class="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+        <h3 class="font-bold text-sm text-[var(--primary)]">+ Adicionar Produto</h3>
+        <button type="button" class="btn btn-ghost btn-xs" @click="showAddProductModal=false" aria-label="Fechar"><span x-html="getIcon('x')"></span></button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="label block mb-1">Nome do Produto</label>
+          <input type="text" class="input text-xs" placeholder="Ex: Frango Vivo 1.8Kg" x-model="newProdName">
+        </div>
+        <div>
+          <label class="label block mb-1">Preço de Venda (MT)</label>
+          <input type="number" class="input text-xs font-bold font-mono" placeholder="Ex: 250" x-model="newProdPrice">
+        </div>
+        <div>
+          <label class="label block mb-1">Categoria</label>
+          <select class="input text-xs" x-model="newProdCategory">
+            <option value="Frangos">Frangos Vivos / Abatidos</option>
+            <option value="Ração">Ração & Alimentação</option>
+            <option value="Ovos">Ovos</option>
+            <option value="Insumos">Insumos & Outros</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex gap-2 justify-end pt-2 border-t border-[var(--border-color)]">
+        <button type="button" class="btn btn-ghost btn-sm text-xs" @click="showAddProductModal=false">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm text-xs font-bold" @click="saveNewProduct()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+  <!-- Modal: Registar Entrada de Produto no Controlo -->
+  <template x-teleport="body">
+<div x-show="showEntradaModal" x-cloak class="app-modal" @click.self="showEntradaModal=false" x-transition.opacity role="dialog" aria-modal="true">
+    <div class="app-modal-card modal-sm p-5 space-y-4 border border-[var(--border-color)] shadow-2xl">
+      <div class="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+        <h3 class="font-bold text-sm text-[var(--primary)]">+ Entrada de Stock</h3>
+        <button type="button" class="btn btn-ghost btn-xs" @click="showEntradaModal=false" aria-label="Fechar"><span x-html="getIcon('x')"></span></button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <p class="font-bold" x-text="entradaTargetProduct ? entradaTargetProduct.name : ''"></p>
+        <div>
+          <label class="label block mb-1">Quantidade de Entrada</label>
+          <input type="number" min="1" class="input text-xs font-bold font-mono" placeholder="Ex: 50" x-model="newEntradaQty">
+        </div>
+      </div>
+      <div class="flex gap-2 justify-end pt-2 border-t border-[var(--border-color)]">
+        <button type="button" class="btn btn-ghost btn-sm text-xs" @click="showEntradaModal=false">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm text-xs font-bold" @click="saveProductEntrada()">Adicionar</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+
+
+
+
+
+
+<!-- Alpine.js -->
+
+
+
+
+
+
+
+
+
+  <!-- Modal: Saúde, Medicamentos e Vacinação -->
+  <template x-teleport="body">
+  <div x-show="showHealthModal" x-cloak class="app-modal" @click.self="showHealthModal=false" @keydown.escape.window="showHealthModal=false" x-transition.opacity role="dialog" aria-modal="true">
+    <div class="app-modal-card modal-md p-5 space-y-4 border-2 border-emerald-500/40 shadow-2xl" @click.stop>
+      <div class="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+        <div><p class="label text-emerald-400">SAÚDE DO LOTE</p><h3 class="font-bold text-base">Registar Medicamento / Vacinação</h3><p class="text-xs text-[var(--text-dim)]">O custo, histórico e próxima data ficam ligados ao lote.</p></div>
+        <button type="button" class="btn btn-ghost btn-xs" @click="showHealthModal=false" aria-label="Fechar"><span x-html="getIcon('x')"></span></button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="label block mb-1">Lote</label><select class="input text-xs" x-model="newHealthLoteId"><template x-for="l in lotes" :key="l.id"><option :value="l.id" x-text="l.code"></option></template></select></div>
+          <div><label class="label block mb-1">Tipo</label><select class="input text-xs" x-model="newHealthType"><option>Vacinação</option><option>Medicamento</option><option>Vitaminas</option><option>Tratamento</option><option>Outro</option></select></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="label block mb-1">Data</label><input type="date" class="input text-xs" x-model="newHealthDate"></div>
+          <div><label class="label block mb-1">Produto / Tratamento</label><input type="text" class="input text-xs" placeholder="Nome da vacina ou tratamento" x-model="newHealthProduct"></div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div><label class="label block mb-1">Quantidade</label><input type="number" min="0" class="input text-xs" x-model="newHealthQty"></div>
+          <div><label class="label block mb-1">Custo (MT)</label><input type="number" min="0" step="10" class="input text-xs font-mono" x-model="newHealthCost"></div>
+          <div><label class="label block mb-1">Próxima data</label><input type="date" class="input text-xs" x-model="newHealthNextDate"></div>
+        </div>
+        <div><label class="label block mb-1">Observações</label><textarea class="input text-xs" rows="3" placeholder="Dose, reação, fornecedor ou observação..." x-model="newHealthNotes"></textarea></div>
+      </div>
+      <div class="flex gap-2 justify-end pt-2 border-t border-[var(--border-color)]"><button type="button" class="btn btn-ghost btn-sm" @click="showHealthModal=false">Cancelar</button><button type="button" class="btn btn-primary btn-sm font-bold" @click="saveHealthLog()">Guardar Registo</button></div>
+    </div>
+  </div>
+  </template>
+
+
+    <!-- CENTRAL DE NOTIFICAÇÕES -->
+    <template x-teleport="body">
+      <div x-show="showNotificationsModal" x-cloak class="app-modal" @keydown.escape.window="showNotificationsModal=false" x-transition.opacity role="dialog" aria-modal="true">
+        <div class="app-modal-card modal-md shadow-2xl" @click.stop>
+          <div class="modal-head">
+            <div>
+              <p class="eyebrow">CENTRAL</p>
+              <h2 class="modal-title">Notificações <span x-show="getUnreadNotificationCount() > 0" class="notification-count-inline" x-text="getUnreadNotificationCount()"></span></h2>
+              <p class="modal-subtitle">Acompanhe alertas importantes da exploração.</p>
+            </div>
+            <button x-show="getUnreadNotificationCount() > 0" type="button" class="btn btn-ghost btn-sm text-xs font-bold" @click="markAllNotificationsRead()">Marcar todas como lidas</button>
+            <button type="button" class="modal-close" @click="showNotificationsModal=false" aria-label="Fechar"><span x-html="getIcon('x')"></span></button>
+          </div>
+          <div class="notification-list-scroll">
+            <template x-for="n in notifications" :key="n.id">
+              <button type="button" class="notification-item text-left w-full" :class="'is-' + (n.type || 'info') + (isNotificationUnread(n) ? ' is-unread' : '')" @click="openNotification(n)">
+                <span class="notification-item-icon" x-html="getIcon(n.type==='critical' ? 'alert' : (n.type==='warning' ? 'alertas' : 'check'))"></span>
+                <div class="flex-1 min-w-0">
+                  <p class="font-semibold text-sm" x-text="n.title"></p>
+                  <p class="text-xs mt-0.5 text-[var(--text-muted)]" x-text="n.message"></p>
+                </div>
+              </button>
+            </template>
+            <div x-show="notifications.length===0" class="empty-state-inline">
+              <span x-html="getIcon('check')"></span>
+              <span>Não há notificações no momento.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+

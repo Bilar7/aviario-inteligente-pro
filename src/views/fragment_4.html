@@ -1,0 +1,399 @@
+              <div class="card p-4 space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border-color)] pb-2.5">
+                  <div class="flex items-center gap-2">
+                    <span x-html="getIcon('financas')"></span>
+                    <div>
+                      <h3 class="font-bold text-sm text-[var(--text-main)]">Fluxo Financeiro — Receitas × Despesas × Lucro</h3>
+                      <p class="text-[11px] text-[var(--text-dim)]">Desempenho consolidado baseado nos movimentos reais do aviário</p>
+                    </div>
+                  </div>
+
+                  <!-- Seletor de Período do Gráfico -->
+                  <div class="flex items-center gap-1 bg-[var(--bg-card-2)] p-1 rounded-lg border border-[var(--border-color)] text-xs">
+                    <button type="button" class="px-2 py-0.5 rounded font-bold transition-all" :class="finChartRange==='7d' ? 'bg-[var(--primary)] text-slate-950 shadow' : 'text-[var(--text-dim)] hover:text-white'" @click="finChartRange='7d'">7 dias</button>
+                    <button type="button" class="px-2 py-0.5 rounded font-bold transition-all" :class="finChartRange==='30d' ? 'bg-[var(--primary)] text-slate-950 shadow' : 'text-[var(--text-dim)] hover:text-white'" @click="finChartRange='30d'">30 dias</button>
+                    <button type="button" class="px-2 py-0.5 rounded font-bold transition-all" :class="finChartRange==='3m' ? 'bg-[var(--primary)] text-slate-950 shadow' : 'text-[var(--text-dim)] hover:text-white'" @click="finChartRange='3m'">3 meses</button>
+                    <button type="button" class="px-2 py-0.5 rounded font-bold transition-all" :class="finChartRange==='6m' ? 'bg-[var(--primary)] text-slate-950 shadow' : 'text-[var(--text-dim)] hover:text-white'" @click="finChartRange='6m'">6 meses</button>
+                    <button type="button" class="px-2 py-0.5 rounded font-bold transition-all" :class="finChartRange==='1y' ? 'bg-[var(--primary)] text-slate-950 shadow' : 'text-[var(--text-dim)] hover:text-white'" @click="finChartRange='1y'">1 ano</button>
+                  </div>
+                </div>
+
+                <!-- Legenda do Gráfico -->
+                <div class="flex items-center justify-end gap-4 text-[11px] pt-1">
+                  <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-emerald-500"></span> <span>Receitas</span></div>
+                  <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-red-500"></span> <span>Despesas</span></div>
+                  <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-amber-400"></span> <span>Lucro Líquido</span></div>
+                </div>
+
+                <!-- Renderização das Barras Reais do Gráfico -->
+                <div class="space-y-3 pt-2">
+                  <template x-if="getFinancialChartData(finChartRange).hasData">
+                    <div class="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-7 gap-2 items-end min-h-[160px] pt-4 px-2 bg-slate-950/30 rounded-xl border border-[var(--border-color)]">
+                      <template x-for="p in getFinancialChartData(finChartRange).points" :key="p.date + p.label">
+                        <div class="flex flex-col items-center gap-1 h-full justify-end group">
+                          <!-- Tooltip com valores ao passar o rato -->
+                          <div class="text-[10px] font-mono text-center opacity-80 group-hover:opacity-100 font-bold">
+                            <span class="text-emerald-400" x-text="p.receitas > 0 ? fmtMT(p.receitas) : ''"></span>
+                          </div>
+
+                          <!-- Barras Comparativas -->
+                          <div class="flex items-end gap-1 w-full max-w-[40px] h-[100px]">
+                            <!-- Barra Receita -->
+                            <div class="w-1/2 bg-emerald-500 rounded-t transition-all duration-500 group-hover:brightness-125" :style="'height: ' + Math.max(4, p.receitaPct) + '%'" :title="'Receitas: ' + fmtMT(p.receitas)"></div>
+                            <!-- Barra Despesa -->
+                            <div class="w-1/2 bg-red-500 rounded-t transition-all duration-500 group-hover:brightness-125" :style="'height: ' + Math.max(4, p.despesaPct) + '%'" :title="'Despesas: ' + fmtMT(p.despesas)"></div>
+                          </div>
+
+                          <!-- Rótulo do Dia/Mês -->
+                          <span class="text-[10px] font-mono text-[var(--text-dim)] uppercase font-semibold text-center whitespace-nowrap mt-1" x-text="p.label"></span>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+
+                  <template x-if="!getFinancialChartData(finChartRange).hasData">
+                    <div class="p-8 text-center bg-slate-950/20 rounded-xl border border-dashed border-[var(--border-color)] space-y-2">
+                      <span class="text-2xl block"></span>
+                      <p class="text-xs text-[var(--text-dim)] font-medium">Ainda não existem dados suficientes para apresentar este gráfico.</p>
+                      <p class="text-[10px] text-[var(--text-dim)]">Registe vendas ou saídas de caixa para visualizar o fluxo financeiro.</p>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 3. Secção "Gestão Financeira" — Cartões de Navegação de Elite -->
+              <div class="space-y-2.5 pt-2">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--text-dim)]"> Gestão Financeira & Módulos Específicos</h3>
+                  <span class="text-[11px] text-[var(--text-dim)]">Clique num módulo para aceder aos detalhes</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  
+                  <!-- 1. Livro de Caixa -->
+                  <div class="card p-4 flex items-center justify-between hover:border-[var(--primary)] transition-all cursor-pointer shadow-lg group" @click="finView='livro_caixa'">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xl text-emerald-400 group-hover:scale-110 transition-transform" aria-hidden="true">
+                        <span x-html="getIcon('caixa')"></span>
+                      </div>
+                      <div>
+                        <h4 class="font-bold text-sm text-[var(--text-main)] group-hover:text-[var(--primary-light)]">Livro de Caixa</h4>
+                        <p class="text-xs text-[var(--text-dim)]">Ver extrato e todos os movimentos</p>
+                      </div>
+                    </div>
+                    <span class="text-lg text-[var(--text-dim)] group-hover:translate-x-1 group-hover:text-[var(--primary)] transition-all">→</span>
+                  </div>
+
+                  <!-- 2. Receitas -->
+                  <div class="card p-4 flex items-center justify-between hover:border-emerald-500 transition-all cursor-pointer shadow-lg group" @click="finView='receitas'">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xl text-emerald-400 group-hover:scale-110 transition-transform" aria-hidden="true">
+                        <span x-html="getIcon('vendas')"></span>
+                      </div>
+                      <div>
+                        <h4 class="font-bold text-sm text-[var(--text-main)] group-hover:text-emerald-400">Receitas</h4>
+                        <p class="text-xs text-[var(--text-dim)]">Vendas de aves e faturamento</p>
+                      </div>
+                    </div>
+                    <span class="text-lg text-[var(--text-dim)] group-hover:translate-x-1 group-hover:text-emerald-400 transition-all">→</span>
+                  </div>
+
+                  <!-- 3. Despesas -->
+                  <div class="card p-4 flex items-center justify-between hover:border-red-500 transition-all cursor-pointer shadow-lg group" @click="finView='despesas'">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-xl text-red-400 group-hover:scale-110 transition-transform" aria-hidden="true">
+                        <span x-html="getIcon('despesas')"></span>
+                      </div>
+                      <div>
+                        <h4 class="font-bold text-sm text-[var(--text-main)] group-hover:text-red-400">Despesas</h4>
+                        <p class="text-xs text-[var(--text-dim)]">Ração, vacinas, salários e custos</p>
+                      </div>
+                    </div>
+                    <span class="text-lg text-[var(--text-dim)] group-hover:translate-x-1 group-hover:text-red-400 transition-all">→</span>
+                  </div>
+
+                  <!-- 4. Contas a Receber -->
+                  <div class="card p-4 flex items-center justify-between hover:border-amber-500 transition-all cursor-pointer shadow-lg group" @click="finView='a_receber'">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xl text-amber-400 group-hover:scale-110 transition-transform" aria-hidden="true">
+                        <span x-html="getIcon('receber')"></span>
+                      </div>
+                      <div>
+                        <h4 class="font-bold text-sm text-[var(--text-main)] group-hover:text-amber-400">Contas a Receber</h4>
+                        <p class="text-xs text-[var(--text-dim)]">Dívidas de clientes e cobranças</p>
+                      </div>
+                    </div>
+                    <span class="text-lg text-[var(--text-dim)] group-hover:translate-x-1 group-hover:text-amber-400 transition-all">→</span>
+                  </div>
+
+                  <!-- 5. Contas a Pagar -->
+                  <div class="card p-4 flex items-center justify-between hover:border-blue-500 transition-all cursor-pointer shadow-lg group" @click="finView='a_pagar'">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-xl text-blue-400 group-hover:scale-110 transition-transform" aria-hidden="true">
+                        <span x-html="getIcon('pagar')"></span>
+                      </div>
+                      <div>
+                        <h4 class="font-bold text-sm text-[var(--text-main)] group-hover:text-blue-400">Contas a Pagar</h4>
+                        <p class="text-xs text-[var(--text-dim)]">Contas pendentes de fornecedores</p>
+                      </div>
+                    </div>
+                    <span class="text-lg text-[var(--text-dim)] group-hover:translate-x-1 group-hover:text-blue-400 transition-all">→</span>
+                  </div>
+
+                  <!-- 6. Análises & Gráficos Detalhados -->
+                  <div class="card p-4 flex items-center justify-between hover:border-purple-500 transition-all cursor-pointer shadow-lg group" @click="finView='analises'">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xl text-purple-400 group-hover:scale-110 transition-transform" aria-hidden="true">
+                        <span x-html="getIcon('analise')"></span>
+                      </div>
+                      <div>
+                        <h4 class="font-bold text-sm text-[var(--text-main)] group-hover:text-purple-400">Análises Financeiras</h4>
+                        <p class="text-xs text-[var(--text-dim)]">Rentabilidade e estrutura de custos</p>
+                      </div>
+                    </div>
+                    <span class="text-lg text-[var(--text-dim)] group-hover:translate-x-1 group-hover:text-purple-400 transition-all">→</span>
+                  </div>
+
+                  <!-- 7. Diagnóstico Inteligente IA (Banner Destacado) -->
+                  <div class="card p-4 sm:col-span-2 lg:col-span-3 flex items-center justify-between bg-gradient-to-r from-emerald-950/30 via-slate-900 to-amber-950/30 hover:border-emerald-500 transition-all cursor-pointer shadow-xl group border-l-4 border-l-emerald-400" @click="finView='ia_analise'">
+                    <div class="flex items-center gap-3.5">
+                      <div class="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-2xl text-emerald-400 group-hover:scale-110 transition-transform" aria-hidden="true">
+                        <span x-html="getIcon('brain')"></span>
+                      </div>
+                      <div>
+                        <div class="flex items-center gap-2">
+                          <h4 class="font-bold text-sm sm:text-base text-emerald-400">Análise Inteligente & Alertas Financeiros</h4>
+                          <span class="badge badge-normal text-[10px]">IA Online</span>
+                        </div>
+                        <p class="text-xs text-[var(--text-muted)] mt-0.5">Diagnóstico automatizado da saúde do aviário, peso da ração e projeções de receita.</p>
+                      </div>
+                    </div>
+                    <span class="text-xl text-emerald-400 group-hover:translate-x-1 transition-transform">→</span>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+
+
+            <!-- ========================================================== -->
+            <!-- 2. SUB-VIEW: LIVRO DE CAIXA COMPLETO                       -->
+            <!-- ========================================================== -->
+            <div x-show="finView==='livro_caixa'" x-cloak class="space-y-4">
+              
+              <!-- Topbar de Navegação com Botão Voltar -->
+              <div class="card p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-l-4 border-l-emerald-500">
+                <div class="flex items-center gap-3">
+                  <button type="button" class="btn btn-ghost btn-sm font-bold text-xs !w-9 !h-9 !p-0 justify-center" @click="finView='visao_geral'" title="Voltar" aria-label="Voltar">
+                    <span x-html="getIcon('arrowLeft')"></span>
+                  </button>
+                  <div class="h-4 w-px bg-[var(--border-color)]"></div>
+                  <h3 class="font-bold text-base text-[var(--text-main)]"> Livro de Caixa & Extrato</h3>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                  <button type="button" class="action-btn !bg-emerald-600 !text-white text-xs font-bold" @click="showModalEntrada=true">
+                    <span x-html="getIcon('arrowDown')"></span> <span>Nova Entrada</span>
+                  </button>
+                  <button type="button" class="action-btn !bg-red-600 !text-white text-xs font-bold" @click="showModalSaida=true">
+                    <span x-html="getIcon('arrowUp')"></span> <span>Nova Saída</span>
+                  </button>
+                  <button type="button" class="action-btn text-xs font-bold text-emerald-400" @click="exportFinancasExcel()">
+                    <span x-html="getIcon('excel')"></span> <span>Excel</span>
+                  </button>
+                  <button type="button" class="action-btn text-xs font-bold" @click="exportFinancasPDF()">
+                    <span x-html="getIcon('pdf')"></span> <span>PDF</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Barra de Filtros Avançados -->
+              <div class="card p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
+                <div>
+                  <label class="label block mb-1"> Pesquisar no Livro de Caixa</label>
+                  <input type="text" class="input text-xs" placeholder="Buscar por descrição, cliente, responsável..." x-model="finSearch">
+                </div>
+                <div>
+                  <label class="label block mb-1"> Período</label>
+                  <select class="input text-xs font-bold" x-model="finPeriod">
+                    <option value="hoje">Hoje</option>
+                    <option value="ontem">Ontem</option>
+                    <option value="7d">Últimos 7 dias</option>
+                    <option value="este_mes">Este mês</option>
+                    <option value="mes_anterior">Mês anterior</option>
+                    <option value="ano">Ano atual</option>
+                    <option value="todos">Todo o histórico</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="label block mb-1"> Tipo de Movimento</label>
+                  <select class="input text-xs" x-model="finTypeFilter">
+                    <option value="all">Todos os Movimentos</option>
+                    <option value="entrada">Apenas Entradas (+)</option>
+                    <option value="saida">Apenas Saídas (-)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="label block mb-1"> Forma de Pagamento</label>
+                  <select class="input text-xs" x-model="finMethodFilter">
+                    <option value="all">Todas as Formas</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="M-Pesa">M-Pesa</option>
+                    <option value="e-Mola">e-Mola</option>
+                    <option value="Transferência">Transferência Bancária</option>
+                    <option value="Cartão">Cartão</option>
+                    <option value="Crédito">Crédito / Fiado</option>
+                    <option value="Outros">Outros</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Resumo instantâneo do extrato -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div class="card p-3"><p class="label">Movimentos</p><p class="font-mono font-bold text-base" x-text="getFilteredTransactions().length"></p><p class="text-[10px] text-[var(--text-dim)]">registos no filtro</p></div>
+                <div class="card p-3"><p class="label text-emerald-400">Entradas</p><p class="font-mono font-bold text-base text-emerald-400" x-text="fmtMT(getFilteredTransactions().filter(t=>t.type==='ENTRADA').reduce((a,b)=>a+b.amount,0))"></p></div>
+                <div class="card p-3"><p class="label text-red-400">Saídas</p><p class="font-mono font-bold text-base text-red-400" x-text="fmtMT(getFilteredTransactions().filter(t=>t.type==='SAÍDA').reduce((a,b)=>a+b.amount,0))"></p></div>
+                <div class="card p-3"><p class="label text-[var(--accent-gold)]">Saldo</p><p class="font-mono font-bold text-base text-[var(--accent-gold)]" x-text="fmtMT(getEliteFinSummary().saldoCaixa)"></p></div>
+              </div>
+
+              <!-- Tabela Completa do Livro de Caixa -->
+              <div class="card table-scroll-box shadow-xl overflow-x-auto">
+                <table class="w-full text-xs sm:text-sm min-w-[750px]">
+                  <thead>
+                    <tr class="text-left text-[var(--text-dim)] text-[10px] sm:text-xs uppercase tracking-wide border-b border-[var(--border-color)] bg-[var(--bg-card-2)]">
+                      <th class="p-3">Data / Hora</th>
+                      <th class="p-3">Tipo / Categoria</th>
+                      <th class="p-3">Descrição do Movimento</th>
+                      <th class="p-3">Forma Pagto</th>
+                      <th class="p-3 font-mono text-right text-emerald-400">Entrada</th>
+                      <th class="p-3 font-mono text-right text-red-400">Saída</th>
+                      <th class="p-3 font-mono text-right">Saldo</th>
+                      <th class="p-3 text-center">Responsável</th>
+                      <th class="p-3 text-center">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="t in getFilteredTransactions()" :key="t.id">
+                      <tr class="align-middle border-b border-[var(--border-color)]/40 hover:bg-[var(--surface-hover)]">
+                        <td class="p-3 font-mono text-xs">
+                          <p class="font-bold text-[var(--text-main)]" x-text="t.date"></p>
+                          <p class="text-[10px] text-[var(--text-dim)]" x-text="t.time"></p>
+                        </td>
+                        <td class="p-3">
+                          <span class="badge text-[10px] font-bold" :class="t.type==='ENTRADA' ? 'badge-normal' : 'badge-danger'" x-text="t.type"></span>
+                          <p class="text-[10px] text-[var(--text-dim)] mt-0.5 font-medium" x-text="t.category"></p>
+                        </td>
+                        <td class="p-3 font-medium">
+                          <p class="text-[var(--text-main)] font-semibold" x-text="t.desc"></p>
+                          <p class="text-[10px] text-[var(--text-dim)]" x-text="'Ref: #' + t.id.slice(-6)"></p>
+                        </td>
+                        <td class="p-3 font-mono text-xs" x-text="t.paymentMethod"></td>
+                        <td class="p-3 font-mono font-bold text-right text-emerald-400" x-text="t.type==='ENTRADA' ? fmtMT(t.amount) : '—'"></td>
+                        <td class="p-3 font-mono font-bold text-right text-red-400" x-text="t.type==='SAÍDA' ? fmtMT(t.amount) : '—'"></td>
+                        <td class="p-3 font-mono font-extrabold text-right text-[var(--text-main)]" x-text="fmtMT(t.runningBalance)"></td>
+                        <td class="p-3 text-center text-xs text-[var(--text-dim)]" x-text="t.responsible"></td>
+                        <td class="p-3 text-center">
+                          <div class="flex items-center justify-center gap-1">
+                            <button type="button" class="action-btn !p-1 text-xs" @click="toast(t.desc + ' · Valor: ' + fmtMT(t.amount) + ' · Registado por: ' + t.responsible)" title="Ver Detalhes"><span x-html="getIcon('eye')"></span></button>
+                            <button type="button" class="action-btn danger !p-1 text-xs" @click="deleteTransactionWithAudit(t)" title="Anular Movimento"><span x-html="getIcon('trash')"></span></button>
+                          </div>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+
+                <div x-show="getFilteredTransactions().length===0" class="p-8 text-center text-xs text-[var(--text-dim)]">
+                  Nenhum movimento encontrado com os filtros selecionados.
+                </div>
+              </div>
+
+            </div>
+
+
+            <!-- ========================================================== -->
+            <!-- 3. SUB-VIEW: RECEITAS & FATURAÇÃO                          -->
+            <!-- ========================================================== -->
+            <div x-show="finView==='receitas'" x-cloak class="space-y-4">
+              <div class="card p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-l-4 border-l-emerald-500">
+                <div class="flex items-center gap-3">
+                  <button type="button" class="btn btn-ghost btn-sm font-bold text-xs !w-9 !h-9 !p-0 justify-center" @click="finView='visao_geral'" title="Voltar" aria-label="Voltar">
+                    <span x-html="getIcon('arrowLeft')"></span>
+                  </button>
+                  <div class="h-4 w-px bg-[var(--border-color)]"></div>
+                  <h3 class="font-bold text-base text-emerald-400"> Gestão de Receitas & Vendas</h3>
+                </div>
+                <button type="button" class="action-btn !bg-emerald-600 !text-white text-xs font-bold" @click="showModalEntrada=true">
+                  <span x-html="getIcon('arrowDown')"></span> <span>Nova Receita / Entrada</span>
+                </button>
+              </div>
+
+              <!-- Resumo de Receitas -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div class="card p-3">
+                  <p class="label">Total de Receitas</p>
+                  <p class="font-bold font-mono text-base sm:text-lg text-emerald-400 mt-1" x-text="fmtMT(getEliteFinSummary('todos').periodReceitas)"></p>
+                </div>
+                <div class="card p-3">
+                  <p class="label">Receitas Deste Mês</p>
+                  <p class="font-bold font-mono text-base sm:text-lg text-emerald-300 mt-1" x-text="fmtMT(getEliteFinSummary('este_mes').periodReceitas)"></p>
+                </div>
+                <div class="card p-3">
+                  <p class="label">Vendas a Pronto</p>
+                  <p class="font-bold font-mono text-base sm:text-lg text-[var(--accent-gold)] mt-1" x-text="fmtMT((sales||[]).filter(s => s.paymentStatus==='Pago').reduce((a,b)=>a+Number(b.totalAmount||0),0))"></p>
+                </div>
+                <div class="card p-3">
+                  <p class="label">Recebimento de Dívidas</p>
+                  <p class="font-bold font-mono text-base sm:text-lg text-blue-400 mt-1" x-text="fmtMT((cashLogs||[]).filter(e => e.category==='Recebimento de Dívida').reduce((a,b)=>a+Number(b.amount||0),0))"></p>
+                </div>
+              </div>
+
+              <!-- Tabela de Receitas -->
+              <div class="card table-scroll-box shadow-xl overflow-x-auto">
+                <table class="w-full text-xs sm:text-sm min-w-[650px]">
+                  <thead>
+                    <tr class="text-left text-[var(--text-dim)] text-[10px] sm:text-xs uppercase tracking-wide border-b border-[var(--border-color)] bg-[var(--bg-card-2)]">
+                      <th class="p-3">Data</th>
+                      <th class="p-3">Categoria</th>
+                      <th class="p-3">Descrição da Receita</th>
+                      <th class="p-3">Método</th>
+                      <th class="p-3 font-mono text-right text-emerald-400">Valor Recebido</th>
+                      <th class="p-3 text-center">Responsável</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="t in getAllTransactions().filter(t => t.type==='ENTRADA')" :key="t.id">
+                      <tr class="align-middle border-b border-[var(--border-color)]/40 hover:bg-[var(--surface-hover)]">
+                        <td class="p-3 font-mono text-xs font-bold" x-text="t.date"></td>
+                        <td class="p-3 font-semibold text-emerald-400" x-text="t.category"></td>
+                        <td class="p-3 font-medium text-[var(--text-main)]" x-text="t.desc"></td>
+                        <td class="p-3 font-mono text-xs" x-text="t.paymentMethod"></td>
+                        <td class="p-3 font-mono font-bold text-right text-emerald-400" x-text="fmtMT(t.amount)"></td>
+                        <td class="p-3 text-center text-xs text-[var(--text-dim)]" x-text="t.responsible"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+
+            <!-- ========================================================== -->
+            <!-- 4. SUB-VIEW: DESPESAS & CUSTOS                              -->
+            <!-- ========================================================== -->
+            <div x-show="finView==='despesas'" x-cloak class="space-y-4">
+              <div class="card p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-l-4 border-l-red-500">
+                <div class="flex items-center gap-3">
+                  <button type="button" class="btn btn-ghost btn-sm font-bold text-xs !w-9 !h-9 !p-0 justify-center" @click="finView='visao_geral'" title="Voltar" aria-label="Voltar">
+                    <span x-html="getIcon('arrowLeft')"></span>
+                  </button>
+                  <div class="h-4 w-px bg-[var(--border-color)]"></div>
+                  <h3 class="font-bold text-base text-red-400"> Controlo de Despesas & Custos</h3>
+                </div>
+                <button type="button" class="action-btn !bg-red-600 !text-white text-xs font-bold" @click="showModalSaida=true">
+                  <span x-html="getIcon('arrowUp')"></span> <span>Nova Despesa / Saída</span>
+                </button>
+              </div>
+
+              <!-- Estrutura de Custos por Categoria -->

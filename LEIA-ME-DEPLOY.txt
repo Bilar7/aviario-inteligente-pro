@@ -1,0 +1,16 @@
+AVIARIO INTELIGENTE PRO — VERSAO CORRIGIDA
+
+GITHUB PAGES
+1. Envie esta pasta para o repositorio GitHub.
+2. Use a branch main.
+3. O workflow em .github/workflows/github-pages.yml instala as dependencias,
+   executa o Vite build e publica a pasta dist/.
+4. Nao publique index.html + src diretamente como site estatico.
+
+LOCAL
+Execute iniciar-aviario.bat.
+O navegador sera aberto em http://127.0.0.1:5641/
+
+IMPORTANTE
+A aplicacao usa Vite para transformar os imports ?raw dos ficheiros HTML.
+Por isso, o site publicado precisa ser o resultado do build.

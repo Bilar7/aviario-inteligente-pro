@@ -1,0 +1,78 @@
+/* AUTH — imagem natural, leitura limpa em claro e escuro */
+.auth-page-bg{
+  min-height:100dvh;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  padding:34px 20px 38px;
+  position:relative;
+  overflow:auto;
+  isolation:isolate;
+  background:url("https://i.pinimg.com/736x/fc/43/00/fc430077a0ef00efdf4d26e667ea5a43.jpg") center/cover no-repeat;
+}
+.auth-page-bg::before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:rgba(255,255,255,.04);
+}
+.auth-page-bg::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:transparent;}
+.auth-card-container{position:relative;z-index:2;width:min(100%,430px);margin:0 auto;padding-top:1.75rem}
+.auth-card{
+  width:100%;background:#fff;border:1px solid rgba(148,163,184,.30);border-radius:24px;
+  padding:3rem 1.25rem 1.25rem;box-shadow:0 18px 46px rgba(15,23,42,.16);
+  text-align:center;
+}
+.auth-logo-badge{position:absolute;top:0;width:64px;height:64px;border-radius:9999px;background:linear-gradient(135deg,#10B981 0%,#059669 100%);border:4px solid #fff;box-shadow:0 10px 28px rgba(16,185,129,.24);display:flex;align-items:center;justify-content:center;z-index:20}
+.brand-main-title{font-size:1.55rem;font-weight:900;letter-spacing:.05em;color:#0f172a;line-height:1.1}
+.brand-sub-title{font-size:1rem;font-weight:700;color:#16a34a;margin-top:.15rem}
+.brand-tagline{font-size:.75rem;color:#475569;margin-top:.4rem}
+.input-with-icon-wrapper{position:relative;display:flex;align-items:center}
+.input-icon-right{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);width:2.25rem;height:2.25rem;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;color:#64748b;cursor:pointer;border-radius:.65rem;z-index:2}
+.input-icon-right:hover{color:#0f172a;background:rgba(127,127,127,.10)}
+.input-icon-right svg{width:17px;height:17px;display:block}
+.auth-input{width:100%;padding:.85rem 1rem;border-radius:14px;background:#fff;border:1px solid #cbd5e1;color:#0f172a;font-size:.875rem;outline:none;transition:all .2s ease}
+.auth-input:focus{border-color:#16a34a;box-shadow:0 0 0 3px rgba(34,197,94,.14)}
+.auth-btn-primary{width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.85rem 1rem;border-radius:14px;background:linear-gradient(135deg,#22C55E 0%,#16A34A 100%);color:#052E16;font-weight:800;font-size:.875rem;letter-spacing:.05em;border:0;cursor:pointer;box-shadow:0 10px 20px -5px rgba(34,197,94,.34);transition:all .2s ease}
+.auth-btn-primary:hover{transform:translateY(-1px);box-shadow:0 12px 24px -5px rgba(34,197,94,.40)}
+.auth-btn-secondary{width:100%;display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.75rem 1rem;border-radius:14px;background:#f8fafc;color:#0f172a;border:1px solid #cbd5e1;font-weight:700;font-size:.8125rem;letter-spacing:.03em;cursor:pointer;transition:all .2s ease}
+.auth-btn-secondary:hover{background:#f1f5f9;border-color:#94a3b8}
+.features-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;width:min(100%,720px);margin:0 auto;z-index:2}
+.feature-pill-card{background:rgba(255,255,255,.94);border:1px solid rgba(148,163,184,.28);border-radius:16px;padding:.72rem .5rem;text-align:center;display:flex;flex-direction:column;align-items:center;gap:.25rem;box-shadow:0 10px 22px rgba(15,23,42,.08)}
+.feature-icon-box{width:34px;height:34px;display:grid;place-items:center;border-radius:11px;color:#059669;background:#ecfdf5;border:1px solid #bbf7d0}
+.feature-icon-box svg{width:18px;height:18px}.feature-pill-label{font-size:.6875rem;font-weight:600;color:#334155;line-height:1.2}
+.theme-toggle-icon-btn{position:fixed;top:18px;right:20px;z-index:50}
+/* dark mode: the photo remains visible, the interface alone changes */
+body:not(.light) .auth-page-bg{background:url("https://i.pinimg.com/736x/fc/43/00/fc430077a0ef00efdf4d26e667ea5a43.jpg") center/cover no-repeat}
+body:not(.light) .auth-page-bg::before,body:not(.light) .auth-page-bg::after{background:transparent}
+body:not(.light) .auth-card{background:#101a18;color:#f8fafc;border-color:rgba(74,222,128,.22);box-shadow:0 22px 58px rgba(0,0,0,.30)}
+body:not(.light) .brand-main-title{color:#f8fafc}body:not(.light) .brand-tagline{color:#b8c9c4}
+body:not(.light) .auth-input{background:#101918;color:#f8fafc;border-color:#3a4f48}
+body:not(.light) .auth-btn-secondary{background:#15211e;color:#f8fafc;border-color:#355047}
+body:not(.light) .auth-page-bg .feature-pill-card{background:rgba(17,28,26,.94);border-color:rgba(74,222,128,.18)}
+body:not(.light) .auth-page-bg .feature-pill-label{color:#e3eeeb}
+body:not(.light) .auth-page-bg .feature-icon-box{color:#4ade80;background:rgba(34,197,94,.10);border-color:rgba(74,222,128,.20)}
+@media(max-width:639px){
+  .auth-page-bg{padding:62px 12px 24px;justify-content:flex-start;gap:10px}
+  .auth-card-container{padding-top:1.15rem;width:min(100%,390px)}
+  .auth-card{border-radius:22px;padding:2.65rem 1rem 1rem}
+  .features-grid{grid-template-columns:repeat(2,minmax(0,1fr));width:min(100%,390px);gap:8px;margin-top:2px}
+  .feature-pill-card{padding:.65rem .45rem}
+}
+
+/* BOOT — ecrã profissional antes da aplicação estar pronta */
+.boot-screen{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;overflow:hidden;background:#eef6f2}
+.boot-backdrop{position:absolute;inset:0;background:url("https://i.pinimg.com/736x/fc/43/00/fc430077a0ef00efdf4d26e667ea5a43.jpg") center/cover no-repeat}
+.boot-backdrop::after{content:"";position:absolute;inset:0;background:rgba(255,255,255,.72)}
+.boot-panel{position:relative;z-index:1;width:min(390px,calc(100vw - 32px));padding:34px 30px 28px;border:1px solid rgba(255,255,255,.75);border-radius:28px;background:rgba(255,255,255,.94);box-shadow:0 24px 70px rgba(15,23,42,.18);text-align:center}
+.boot-logo{width:76px;height:76px;margin:-66px auto 16px;display:block;border-radius:22px;box-shadow:0 12px 26px rgba(16,185,129,.22)}
+.boot-title{font-size:1.25rem;font-weight:900;letter-spacing:.12em;color:#0f172a}.boot-subtitle{margin-top:5px;font-size:.95rem;font-weight:800;color:#16a34a}
+.boot-progress{height:5px;margin:24px 0 11px;overflow:hidden;border-radius:999px;background:#dce8e2}.boot-progress span{display:block;width:38%;height:100%;border-radius:inherit;background:#16a34a;animation:boot-progress 1.15s ease-in-out infinite}
+.boot-status{font-size:.78rem;color:#64748b}.boot-brand{margin-top:18px;font-size:.62rem;font-weight:700;letter-spacing:.08em;color:#94a3b8}
+@keyframes boot-progress{0%{transform:translateX(-130%)}100%{transform:translateX(285%)}}
+body:not(.light) .boot-screen{background:#0a1210}.boot-screen.dark .boot-backdrop::after{background:rgba(5,12,10,.22)}
+body:not(.light) .boot-panel{background:rgba(11,24,20,.94);border-color:rgba(74,222,128,.18);box-shadow:0 30px 80px rgba(0,0,0,.35)}
+body:not(.light) .boot-title{color:#f8fafc}body:not(.light) .boot-subtitle{color:#4ade80}
+body:not(.light) .boot-status{color:#a9bdb6}body:not(.light) .boot-brand{color:#71837d}
+@media(max-width:639px){.boot-panel{padding:30px 20px 22px}.boot-logo{width:68px;height:68px;margin:-56px auto 14px}}

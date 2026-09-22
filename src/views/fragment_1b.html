@@ -1,0 +1,20 @@
+          <span x-html="voiceEnabled ? getIcon('volume') : getIcon('mute')"></span>
+        </button>
+
+        <!-- Notificações -->
+        <button type="button" class="action-btn top-icon-btn notification-control !p-1.5 !h-8 !w-8 justify-center relative" @click="showNotificationsModal=true" title="Notificações" aria-label="Abrir notificações">
+          <span x-html="getIcon('notifications')"></span>
+          <span x-show="getUnreadNotificationCount() > 0" x-text="getUnreadNotificationCount() > 9 ? '9+' : getUnreadNotificationCount()" class="notification-badge"></span>
+        </button>
+
+        <!-- Tema -->
+        <button type="button" class="action-btn top-icon-btn icon-tooltip !p-1.5 !h-8 !w-8 justify-center" @click="toggleTheme()" :data-tooltip="darkMode ? 'Modo claro' : 'Modo escuro'" :title="darkMode ? 'Modo claro' : 'Modo escuro'">
+          <span x-html="darkMode ? getIcon('sun') : getIcon('moon')"></span>
+        </button>
+
+        <button type="button" class="action-btn danger mobile-secondary-control !p-1.5 !h-8 !w-8 justify-center" @click="logout()" title="Terminar Sessão">
+          <span x-html="getIcon('logout')"></span>
+        </button>
+      </div>
+    </header>
+

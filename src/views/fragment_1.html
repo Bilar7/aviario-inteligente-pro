@@ -1,0 +1,447 @@
+
+
+
+<div id="file-protocol-warning" hidden>
+  <div class="file-warning-card">
+    <strong>Abra o Aviário por um servidor local</strong>
+    <p>Não abra o <code>index.html</code> diretamente. Execute <code>iniciar-aviario.bat</code> para usar <code>http://localhost</code>.</p>
+  </div>
+</div>
+
+<!-- TOASTS DE NOTIFICAÇÃO -->
+<div class="app-toasts print:hidden">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="card px-4 py-3 shadow-2xl text-sm flex items-start gap-2"
+         :style="t.type==='error' ? 'border-color:var(--danger)' : 'border-color:var(--success)'">
+      <span x-text="t.type==='error' ? '' : ''"></span>
+      <span x-text="t.msg" class="font-medium"></span>
+    </div>
+  </template>
+</div>
+
+<!-- PROCESSAMENTO DE OPERAÇÕES FIREBASE -->
+<template x-teleport="body">
+<div x-show="operationBusy" x-cloak class="fixed inset-0 z-[10000] pointer-events-none flex items-center justify-center" aria-live="polite" role="status">
+  <div class="card min-w-[240px] max-w-[90vw] px-5 py-4 shadow-2xl border border-emerald-500/30 bg-[var(--bg-card)]/95 backdrop-blur-sm text-center pointer-events-auto">
+    <div class="mx-auto mb-2 w-6 h-6 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin"></div>
+    <p class="text-xs font-bold text-emerald-400" x-text="operationLabel || 'A processar…'"></p>
+    <p class="text-[10px] text-[var(--text-dim)] mt-1" x-text="operationStep ? 'Etapa ' + operationStep : 'Aguarde alguns instantes…'"></p>
+  </div>
+</div>
+</template>
+
+<!-- CONFIRM DIALOG -->
+<template x-teleport="body">
+<div x-show="confirmDialog.show" x-cloak class="app-modal" x-transition.opacity role="dialog" aria-modal="true">
+  <div class="app-modal-card modal-sm p-6 shadow-2xl space-y-4" @click.outside="confirmDialog.show=false">
+    <p class="font-bold text-base sm:text-lg" x-text="confirmDialog.message"></p>
+    <div class="flex gap-3 justify-end">
+      <button type="button" class="btn btn-ghost btn-sm" @click="confirmDialog.show=false">Cancelar</button>
+      <button type="button" class="btn btn-primary btn-sm font-bold" @click="doConfirm()">Confirmar</button>
+    </div>
+  </div>
+</div>
+</template>
+
+
+<template x-teleport="body">
+<div x-show="showProfile && !!currentUser" x-cloak class="app-modal" x-transition.opacity role="dialog" aria-modal="true">
+  <div class="app-modal-card modal-sm p-5 sm:p-6 shadow-2xl space-y-4" @click.outside="showProfile=false">
+    <div class="flex items-center justify-between">
+      <p class="font-bold text-base sm:text-lg">O Meu Perfil</p>
+      <span class="badge text-[10px]" :class="userRoleBadge(currentUser ? currentUser.roleType : '').class" x-text="userRoleBadge(currentUser ? currentUser.roleType : '').label"></span>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="label block mb-1">Nome Completo</label>
+        <input type="text" class="input text-xs sm:text-sm" x-model="profNome">
+      </div>
+      <div>
+        <label class="label block mb-1">Utilizador</label>
+        <input type="text" class="input text-xs sm:text-sm opacity-70 cursor-not-allowed" x-model="profUsername" disabled>
+      </div>
+      <div>
+        <label class="label block mb-1">Telemóvel (+258)</label>
+        <input type="text" class="input text-xs sm:text-sm" x-model="profTelefone" placeholder="+258 84 000 0000">
+      </div>
+      <div>
+        <label class="label block mb-1">Nova palavra-passe</label>
+        <div class="relative" x-data="{ showProfCredential:false }">
+          <input :type="showProfCredential ? 'text' : 'password'" class="input text-xs sm:text-sm w-full pr-10" x-model="profSenha" placeholder="Deixe vazio para manter a actual" autocomplete="new-password">
+          <button type="button" class="input-icon-right" @click="showProfCredential=!showProfCredential"><span x-html="showProfCredential ? getIcon('eyeOff') : getIcon('eye')"></span></button>
+        </div>
+        <div class="mt-3">
+          <label class="label block mb-1">Palavra-passe actual</label>
+          <div class="relative" x-data="{ showProfCurrentCredential:false }">
+            <input :type="showProfCurrentCredential ? 'text' : 'password'" class="input text-xs sm:text-sm w-full pr-10" x-model="profSenhaAtual" placeholder="Obrigatória apenas ao mudar a palavra-passe" autocomplete="current-password">
+            <button type="button" class="input-icon-right" @click="showProfCurrentCredential=!showProfCurrentCredential" :title="showProfCurrentCredential ? 'Ocultar' : 'Mostrar'" aria-label="Mostrar ou ocultar palavra-passe actual"><span x-html="showProfCurrentCredential ? getIcon('eyeOff') : getIcon('eye')"></span></button>
+          </div>
+        </div>
+        <div class="relative mt-2">
+                <input :type="showProfConfirmCredential ? 'text' : 'password'" class="input text-xs sm:text-sm w-full pr-10" x-model="profSenhaConfirm" :placeholder="t('confirmarCredencial')" autocomplete="new-password">
+                <button type="button" class="input-icon-right" @click="showProfConfirmCredential=!showProfConfirmCredential" :title="showProfConfirmCredential ? t('ocultarCredencial') : t('mostrarCredencial')" aria-label="Mostrar ou ocultar confirmação da credencial"><span x-html="showProfConfirmCredential ? getIcon('eyeOff') : getIcon('eye')"></span></button>
+              </div>
+      </div>
+    </div>
+    <div class="flex gap-2 justify-end pt-2">
+      <button type="button" class="btn btn-ghost btn-sm text-xs" @click="showProfile=false">Cancelar</button>
+      <button type="button" class="btn btn-primary btn-sm text-xs font-bold" @click="saveProfile()">Guardar</button>
+    </div>
+  </div>
+</div>
+</template>
+
+<!-- MODAL NOVO LOTE — PADRÃO OFICIAL DO SISTEMA
+     Este modal usa a mesma arquitetura visual/estrutural do formulário de referência:
+     portal para BODY + overlay fixo + cartão com scroll próprio. -->
+<template x-teleport="body">
+<div x-show="showNewLote" x-cloak class="app-modal" @keydown.escape.window="closeNewLote()" x-transition.opacity role="dialog" aria-modal="true" aria-labelledby="new-lote-title">
+  <div class="app-modal-card new-lote-modal-card shadow-2xl" @click.stop>
+    <div class="modal-head">
+      <div class="min-w-0">
+        <div class="lote-form-title-row"><span class="lote-form-chick" x-html="getIcon('chick')"></span><div><p class="eyebrow">PRODUÇÃO · NOVO REGISTO</p>
+        <h2 id="new-lote-title" class="modal-title">Criar novo lote</h2></div></div>
+        <p class="modal-subtitle">Registe os dados de entrada uma única vez. O sistema calcula idade, custo e previsão do ciclo.</p>
+      </div>
+      <button type="button" class="modal-close" @click="closeNewLote()" aria-label="Fechar"><span x-html="getIcon('x')"></span></button>
+    </div>
+
+    <form class="space-y-4 text-xs" @submit.prevent="saveNewLote()">
+      <section class="lote-form-section">
+        <div class="lote-form-section-head"><span class="lote-form-step">01</span><div><p class="font-bold text-sm">Identificação</p><p class="text-[10px] text-[var(--text-dim)]">Como o lote será encontrado no sistema.</p></div></div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div><label class="label block mb-1">Código do lote</label><input type="text" class="input text-xs font-bold" x-model="newLoteCode" required aria-describedby="lote-code-help"><p id="lote-code-help" class="field-help">Gerado automaticamente. Pode ajustar se já existir um código interno.</p></div>
+          <div><label class="label block mb-1">Data de entrada</label><input type="date" class="input text-xs" x-model="newLoteEntryDate" required></div>
+          <div><label class="label block mb-1">Nave / área de alojamento</label><input type="text" class="input text-xs" x-model="newLoteHouse" placeholder="Ex.: Nave 1 · Área A"></div>
+          <div><label class="label block mb-1">Fornecedor / origem</label><input type="text" class="input text-xs" x-model="newLoteSupplier" placeholder="Fornecedor ou incubadora"></div>
+        </div>
+      </section>
+
+      <section class="lote-form-section">
+        <div class="lote-form-section-head"><span class="lote-form-step">02</span><div><p class="font-bold text-sm">Dados zootécnicos</p><p class="text-[10px] text-[var(--text-dim)]">Informação usada para acompanhar o desenvolvimento.</p></div></div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="lote-quantity-field"><label class="label block mb-1"><span class="inline-flex items-center gap-1.5"><span class="lote-field-icon" x-html="getIcon('chick')"></span>Quantidade inicial</span></label><input type="number" min="1" step="1" class="input text-xs font-mono font-bold" x-model="newLoteBirds" required @input="newLoteCostChicks=(Number(newLoteBirds)||0)*(Number(newLotePricePerChick)||0)"><p class="field-help">Número de pintos/frangos recebidos.</p></div>
+          <div><label class="label block mb-1">Raça / linhagem</label><select class="input text-xs" x-model="newLoteBreed"><option value="Cobb 500">Cobb 500</option><option value="Ross 308">Ross 308</option><option value="Hubbard Classic">Hubbard Classic</option><option value="Caipira / Landim">Caipira / Landim</option><option value="Outra">Outra</option></select></div>
+          <div><label class="label block mb-1">Idade inicial (dias)</label><input type="number" min="0" step="1" class="input text-xs font-mono" x-model="newLoteInitialAge"></div>
+          <div><label class="label block mb-1">Peso alvo (kg / ave)</label><input type="number" min="0" step="0.01" class="input text-xs font-mono" x-model="newLoteTargetWeight"></div>
+          <div><label class="label block mb-1">Ciclo previsto (dias)</label><input type="number" min="1" step="1" class="input text-xs font-mono" x-model="newLoteCycleDays"></div>
+          <div class="sm:col-span-2 lg:col-span-3 rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/5 p-3 flex items-center justify-between gap-3"><div><p class="label">Previsão de saída</p><p class="text-[10px] text-[var(--text-dim)]">Calculada a partir da entrada, idade e ciclo do lote.</p></div><strong class="text-sm text-[var(--primary-light)]" x-text="formatShortDate(getLoteTargetDate({entryDate:newLoteEntryDate,initialAge:Number(newLoteInitialAge)||0,cycleDays:Number(newLoteCycleDays)||38}))"></strong></div>
+        </div>
+      </section>
+
+      <section class="lote-form-section">
+        <div class="lote-form-section-head"><span class="lote-form-step">03</span><div><p class="font-bold text-sm">Custo de entrada</p><p class="text-[10px] text-[var(--text-dim)]">O custo total é calculado automaticamente.</p></div></div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div><label class="label block mb-1">Preço por pinto (MT)</label><input type="number" min="0" step="0.01" class="input text-xs font-mono" x-model="newLotePricePerChick" @input="newLoteCostChicks=(Number(newLoteBirds)||0)*(Number(newLotePricePerChick)||0)"></div>
+          <div class="lote-total-box"><div><p class="label">Custo total dos pintos</p><p class="text-[10px] text-[var(--text-dim)]">Quantidade × preço unitário</p></div><strong x-text="fmtMT((Number(newLoteBirds)||0)*(Number(newLotePricePerChick)||0))"></strong></div>
+        </div>
+      </section>
+
+      <section>
+        <label class="label block mb-1">Observações do alojamento <span class="font-normal text-[var(--text-dim)]">(opcional)</span></label>
+        <textarea class="input text-xs w-full min-h-[78px] resize-y" x-model="newLoteNotes" placeholder="Registe informação útil sobre a entrada, transporte, condição das aves ou outros detalhes."></textarea>
+      </section>
+
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-3 border-t border-[var(--border-color)]">
+        <button type="button" class="btn btn-ghost btn-sm" @click="closeNewLote()">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-sm font-bold px-5"><span x-html="getIcon('plus')"></span> Criar lote e começar acompanhamento</button>
+      </div>
+    </form>
+  </div>
+</div>
+</template>
+
+<!-- MODAL GESTÃO DE ACESSO -->
+<template x-teleport="body">
+<div x-show="editingAccessUser" x-cloak class="app-modal" x-transition.opacity role="dialog" aria-modal="true">
+  <div class="app-modal-card modal-md p-5 space-y-4 shadow-2xl" @click.outside="editingAccessUser=null">
+    <div class="flex items-center justify-between">
+      <div><h3 class="font-bold text-base">Gerir conta</h3><p class="text-xs text-[var(--text-dim)]" x-text="editingAccessUser ? (editingAccessUser.email || editingAccessUser.name || editingAccessUser.nome || '') : ''"></p></div>
+      <button type="button" class="btn btn-ghost btn-sm" @click="editingAccessUser=null" aria-label="Fechar"><span x-html="getIcon('x')"></span></button>
+    </div>
+    <div class="space-y-3">
+      <select class="input text-xs w-full" x-model="accessEditRoleType" :disabled="!isSuperAdmin()">
+        <option value="employee">Funcionário</option><option value="seller">Vendedor / Caixa</option><option value="admin">Administrador</option>
+      </select>
+      <select class="input text-xs w-full" x-model="accessEditStatus">
+        <option value="active">Activo</option><option value="inactive">Bloqueado</option>
+      </select>
+      <div class="rounded-lg border border-[var(--border-color)] bg-[var(--surface-soft)] p-3 text-xs text-[var(--text-dim)]">
+        <p class="font-semibold text-[var(--text-main)]">Acesso</p>
+        <p class="mt-1">O acesso normal é feito com o e-mail e a palavra-passe da conta. Para alterar a palavra-passe, use “Editar meu perfil”.</p>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2"><button type="button" class="btn btn-ghost" @click="editingAccessUser=null">Cancelar</button><button type="button" class="btn btn-primary" @click="saveStaffAccess()">Guardar acesso</button></div>
+  </div>
+</div>
+</template>
+
+
+<!-- MODAL PARTILHAR CREDENCIAIS -->
+<template x-teleport="body">
+<div x-show="sharingUser && !navigator.share" x-cloak class="app-modal" x-transition.opacity role="dialog" aria-modal="true">
+  <div class="app-modal-card modal-md p-5 space-y-4">
+    <div class="flex items-center justify-between"><div><h3 class="font-bold">Partilhar credenciais</h3><p class="text-xs text-[var(--text-dim)]">Escolha uma aplicação para enviar ou copie a mensagem.</p></div><button type="button" class="btn btn-ghost btn-sm" @click="sharingUser=null"><span x-html="getIcon('x')"></span></button></div>
+    <textarea class="input text-xs w-full min-h-[130px]" x-model="shareText"></textarea>
+    <div class="modal-grid-2">
+      <button type="button" class="btn btn-primary" @click="copyShareText()"><span x-html="getIcon('copy')"></span> Copiar</button>
+      <a class="btn btn-ghost" :href="'https://wa.me/?text='+encodeURIComponent(shareText)" target="_blank" rel="noopener" @click="sharingUser=null"><span x-html="getIcon('whatsapp')"></span> WhatsApp</a>
+      <a class="btn btn-ghost" :href="'sms:?body='+encodeURIComponent(shareText)" @click="sharingUser=null">SMS</a>
+      <a class="btn btn-ghost" :href="'mailto:?subject='+encodeURIComponent('Credenciais de acesso')+'&body='+encodeURIComponent(shareText)" @click="sharingUser=null">E-mail</a>
+    </div>
+  </div>
+</div>
+</template>
+
+
+<!-- DRAWER MENU LATERAL MOBILE (TODAS AS FUNÇÕES ACESSÍVEIS)       -->
+
+<div x-show="mobileMenuOpen" x-cloak class="mobile-drawer print:hidden" @click.self="mobileMenuOpen=false">
+  <div class="mobile-drawer-content" @click.outside="mobileMenuOpen=false">
+    <div class="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
+      <div class="flex items-center gap-2">
+        <template x-if="settings.companyLogo"><img :src="settings.companyLogo" alt="Logotipo da empresa" class="w-8 h-8 object-contain rounded-lg bg-white p-0.5"></template><template x-if="!settings.companyLogo"><span class="w-8 h-8 flex items-center justify-center text-emerald-400" x-html="getIcon('logo')"></span></template>
+        <div>
+          <p class="font-bold text-sm text-[var(--primary-light)]" x-text="settings.farmName"></p>
+          <p class="text-[10px] text-[var(--text-dim)]">Menu de Todas as Funções</p>
+        </div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-xs text-sm" @click="mobileMenuOpen=false" aria-label="Fechar menu"><span x-html="getIcon('x')"></span></button>
+    </div>
+
+    <div class="space-y-1 pt-2 overflow-y-auto flex-1">
+      <a x-show="canAccessView('dashboard')" href="#" class="navlink" :class="view==='dashboard' && 'active'" @click.prevent="goTo('dashboard')">
+        <span x-html="getIcon('dashboard')"></span> <span>Painel Geral</span>
+      </a>
+      <a x-show="canAccessView('controlo')" href="#" class="navlink" :class="view==='controlo' && 'active'" @click.prevent="goTo('controlo')">
+        <span x-html="getIcon('controlo')"></span> <span>Controlo do Dia</span>
+      </a>
+      <a x-show="canAccessView('lotes')" href="#" class="navlink" :class="view==='lotes' && 'active'" @click.prevent="goTo('lotes')">
+        <span x-html="getIcon('lotes')"></span> <span>Lotes de Frangos</span>
+      </a>
+      <a x-show="canAccessView('racao')" href="#" class="navlink" :class="view==='racao' && 'active'" @click.prevent="goTo('racao')">
+        <span x-html="getIcon('racao')"></span> <span>Ração & Alimentação</span>
+      </a>
+      <a x-show="canAccessView('vendas')" href="#" class="navlink" :class="view==='vendas' && 'active'" @click.prevent="goTo('vendas')">
+        <span x-html="getIcon('vendas')"></span> <span>Vendas de Frangos</span>
+      </a>
+      <a x-show="canAccessView('financas')" href="#" class="navlink" :class="view==='financas' && 'active'" @click.prevent="goTo('financas')">
+        <span x-html="getIcon('financas')"></span> <span>Caixa & Finanças</span>
+      </a>
+      <a x-show="canAccessView('clientes')" href="#" class="navlink" :class="view==='clientes' && 'active'" @click.prevent="goTo('clientes')">
+        <span x-html="getIcon('clientes')"></span> <span>Clientes & Dívidas</span>
+      </a>
+      <a x-show="canAccessView('equipa')" href="#" class="navlink" :class="view==='equipa' && 'active'" @click.prevent="goTo('equipa')">
+        <span x-html="getIcon('equipa')"></span> <span>Presença & Equipa</span>
+      </a>
+      <a x-show="canAccessView('stock')" href="#" class="navlink" :class="view==='stock' && 'active'" @click.prevent="goTo('stock')">
+        <span x-html="getIcon('stock')"></span> <span>Inventário & Stock</span>
+      </a>
+
+      <div class="relative pt-1">
+        <button x-show="isAdmin()" type="button" class="navlink w-full" @click="moreOpen=!moreOpen" :aria-expanded="moreOpen">
+          <span x-html="getIcon('more')"></span> <span>Mais</span>
+        </button>
+        <div x-show="moreOpen" x-transition x-cloak class="mt-1 ml-2 pl-2 border-l border-[var(--border-color)] space-y-1">
+          <a x-show="canAccessView('despesas')" href="#" class="navlink" :class="view==='despesas' && 'active'" @click.prevent="goTo('despesas'); moreOpen=false"><span x-html="getIcon('despesas')"></span><span>Energia & Despesas</span></a>
+          <a x-show="canAccessView('planilha')" href="#" class="navlink" :class="view==='planilha' && 'active'" @click.prevent="goTo('planilha'); moreOpen=false"><span x-html="getIcon('planilha')"></span><span>Planilha Inteligente</span></a>
+          <a x-show="canAccessView('relatorios')" href="#" class="navlink" :class="view==='relatorios' && 'active'" @click.prevent="goTo('relatorios'); moreOpen=false"><span x-html="getIcon('relatorios')"></span><span>Relatórios & Fecho</span></a>
+          <a x-show="canAccessView('configuracoes')" href="#" class="navlink" :class="view==='configuracoes' && 'active'" @click.prevent="goTo('configuracoes'); moreOpen=false"><span x-html="getIcon('configuracoes')"></span><span>Definições</span></a>
+        </div>
+      </div>
+    </div>
+
+    <div class="pt-3 border-t border-[var(--border-color)]">
+      <button type="button" class="btn btn-ghost w-full justify-start text-xs text-red-400" @click="logout()">
+        <span x-html="getIcon('logout')"></span> Terminar Sessão
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+
+<template x-if="!currentUser">
+  <div class="auth-page-bg">
+    
+    <!-- Botão Flutuante de Alternador Claro / Escuro -->
+    <button type="button" class="icon-tooltip theme-toggle-icon-btn" @click="toggleTheme()" :data-tooltip="darkMode ? 'Modo claro' : 'Modo escuro'" :aria-label="darkMode ? 'Modo claro' : 'Modo escuro'" :title="darkMode ? 'Modo claro' : 'Modo escuro'">
+      <span class="theme-toggle-icon" x-html="darkMode ? getIcon('sun') : getIcon('moon')"></span>
+    </button>
+
+    <!-- Card Central Arredondado com Badge de Logo no Topo -->
+    <div class="auth-card-container">
+      
+      <!-- Emblema de Logo Arqueado (Galinha & Aviário) -->
+      <div class="auth-logo-badge" aria-label="Logótipo Aviário Gestão Inteligente">
+        <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+          <path d="M8 28 32 9l24 19v27H8V28Z" fill="rgba(255,255,255,.16)" stroke="white" stroke-width="2.4"/>
+          <path d="M18 55V34h28v21" stroke="white" stroke-width="2.4"/>
+          <path d="M24 27c0-6 5-10 10-7 2 1 3 3 3 5 0 4-3 7-7 7h-5c-3 0-5-2-5-5 0-1 1-2 4-2Z" fill="#fff"/>
+          <circle cx="34" cy="23" r="1.6" fill="#059669"/>
+          <path d="M39 23h7l-5 3M27 20l-1.5-4M31 19l2-4" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <path d="M20 42h7M37 42h7M20 48h7M37 48h7" stroke="#34D399" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <!-- Caixa Principal de Login -->
+      <div class="auth-card space-y-4">
+        
+        <!-- Cabeçalho da Marca -->
+        <div>
+          <h1 class="brand-main-title">AVIÁRIO</h1>
+          <h2 class="brand-sub-title">Gestão Inteligente</h2>
+          <p class="brand-tagline">Controle completo da sua produção,<br>mais eficiência, mais resultados.</p>
+        </div>
+
+        <!-- Formulário de Login -->
+        <div x-show="!showSignup" class="space-y-3.5 pt-1">
+          <form @submit.prevent="login()" class="space-y-3">
+            <div x-show="loginError" class="p-2.5 bg-red-500/20 border border-red-500/40 rounded-xl text-xs text-red-400 font-medium" x-text="loginError"></div>
+
+            <!-- Campo E-mail / Utilizador -->
+            <div class="input-with-icon-wrapper">
+              <input type="text" class="auth-input" placeholder="Nome de utilizador ou e-mail" x-model="loginUsername" required autocomplete="username">
+            </div>
+            <div class="input-with-icon-wrapper" x-data="{ showPw: false }">
+              <input :type="showPw ? 'text' : 'password'" class="auth-input" placeholder="PIN ou palavra-passe" x-model="loginSenha" required autocomplete="current-password">
+              <button type="button" class="input-icon-right" @click="showPw = !showPw" :title="showPw ? 'Ocultar' : 'Mostrar'" aria-label="Mostrar ou ocultar credencial">
+                <span x-html="showPw ? getIcon('eyeOff') : getIcon('eye')"></span>
+              </button>
+            </div>
+
+            <!-- Linha Lembrar-me & Recuperação -->
+            <div class="flex items-center justify-between text-xs pt-0.5">
+              <label class="inline-flex items-center gap-1.5 cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-main)]">
+                <input type="checkbox" x-model="rememberMe" class="rounded border-slate-600 text-emerald-500 focus:ring-0">
+                <span>Lembrar-me</span>
+              </label>
+              <a href="#" class="text-emerald-500 font-medium hover:underline text-[11px]" @click.prevent="toast('Contacte o Administrador para redefinir o acesso.')">Esqueceu a palavra-passe?</a>
+            </div>
+
+            <!-- Botão Principal ENTRAR -->
+            <button type="submit" class="auth-btn-primary mt-2" :disabled="authBusy">
+              <span x-html="getIcon('login')"></span> <span x-text="authBusy ? 'Aguarde...' : 'Entrar no sistema'"></span>
+            </button>
+          </form>
+
+          <!-- Divisor 'ou' -->
+          <div class="flex items-center justify-center gap-3 my-2 text-xs text-[var(--text-dim)]">
+            <span class="h-px bg-[var(--border-color)] flex-1"></span>
+            <span>ou</span>
+            <span class="h-px bg-[var(--border-color)] flex-1"></span>
+          </div>
+
+          <!-- Botão REGISTAR NOVA CONTA -->
+          <button type="button" class="auth-btn-secondary" x-show="(staff||[]).length===0" @click="showSignup=true">
+            <span x-html="getIcon('userPlus')"></span> <span>Registar</span>
+          </button>
+        </div>
+
+        <!-- Formulário de Criar Nova Conta Admin -->
+        <div x-show="showSignup" class="space-y-3 text-left pt-1">
+          <div class="flex items-center justify-between border-b border-[var(--border-color)] pb-2">
+            <p class="font-bold text-sm text-emerald-400">Registar</p>
+            <button type="button" class="text-xs text-[var(--text-muted)] hover:underline" @click="showSignup=false">Voltar</button>
+          </div>
+
+          <form @submit.prevent="signupAdmin()" class="space-y-2.5">
+            <div x-show="signupError" class="p-2 bg-red-500/20 border border-red-500/40 rounded-lg text-xs text-red-400" x-text="signupError"></div>
+            <div><label class="label block mb-1">Nome do Gestor / Produtor</label><input type="text" class="input text-xs" placeholder="Nome completo" x-model="suNome" required></div>
+            <div><label class="label block mb-1">Nome da Exploração / Aviário</label><input type="text" class="input text-xs" placeholder="Nome da exploração" x-model="suFarmName" required></div>
+            <div><label class="label block mb-1">Nome de utilizador</label><input type="text" class="input text-xs" placeholder="Ex: administrador" x-model="suUsername" required autocomplete="username"></div>
+            <div><label class="label block mb-1">E-mail</label><input type="email" class="input text-xs" placeholder="nome@exemplo.com" x-model="suEmail" required autocomplete="email"></div>
+            <div><label class="label block mb-1">PIN ou palavra-passe</label><div class="relative" x-data="{ showSuCredential:false }"><input :type="showSuCredential ? 'text' : 'password'" class="input text-xs pr-10 w-full" placeholder="Digite o seu PIN ou palavra-passe" x-model="suSenha" required autocomplete="new-password"><button type="button" class="input-icon-right" @click="showSuCredential=!showSuCredential" :title="showSuCredential ? 'Ocultar' : 'Mostrar'" aria-label="Mostrar ou ocultar PIN ou palavra-passe"><span x-html="showSuCredential ? getIcon('eyeOff') : getIcon('eye')"></span></button></div></div>
+            <div><label class="label block mb-1">Confirmar PIN ou palavra-passe</label><div class="relative" x-data="{ showSuConfirmCredential:false }"><input :type="showSuConfirmCredential ? 'text' : 'password'" class="input text-xs pr-10 w-full" placeholder="Repita a credencial" x-model="suSenhaConfirm" required autocomplete="new-password"><button type="button" class="input-icon-right" @click="showSuConfirmCredential=!showSuConfirmCredential" :title="showSuConfirmCredential ? 'Ocultar' : 'Mostrar'" aria-label="Mostrar ou ocultar confirmação do PIN ou palavra-passe"><span x-html="showSuConfirmCredential ? getIcon('eyeOff') : getIcon('eye')"></span></button></div></div>
+            <button type="submit" class="auth-btn-primary w-full mt-2" :disabled="authBusy" :aria-busy="authBusy">
+              <span x-text="authBusy ? 'A criar conta...' : 'Criar conta & entrar'"></span>
+            </button>
+          </form>
+          <div class="text-center text-[11px] text-[var(--text-dim)] pt-1">Já tem uma conta? <button type="button" class="text-emerald-500 font-semibold hover:underline" @click="showSignup=false">Entrar</button></div>
+        </div>
+
+        <!-- Nota de Rodapé -->
+        <p class="text-[10px] text-[var(--text-dim)] pt-2 border-t border-[var(--border-color)]">
+          Sistema desenvolvido para uma avicultura moderna e sustentável.
+        </p>
+
+      </div>
+    </div>
+
+    <!-- 4 Feature Pills no Fundo da Tela -->
+    <div class="features-grid">
+      <div class="feature-pill-card">
+        <div class="feature-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5M4 19h16"/><path d="m7 15 3-4 3 2 5-6"/></svg></div>
+        <p class="feature-pill-label">Monitorização<br>em tempo real</p>
+      </div>
+      <div class="feature-pill-card">
+        <div class="feature-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 16c-2 0-3-1.5-3-3s1.5-3 4-3c.3-3 2.5-5 5.5-5 2.5 0 4.5 1.5 5 3.5.8.2 1.5.8 1.5 1.8 0 1.5-1.5 2.7-3.2 2.7H13c-.8 2.4-2.7 4-6 4Z"/><circle cx="15.5" cy="7.5" r=".8" fill="currentColor"/></svg></div>
+        <p class="feature-pill-label">Bem-estar<br>animal</p>
+      </div>
+      <div class="feature-pill-card">
+        <div class="feature-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"/><path d="M10 21h4"/></svg></div>
+        <p class="feature-pill-label">Alertas<br>inteligentes</p>
+      </div>
+      <div class="feature-pill-card">
+        <div class="feature-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4v-1h6v1M8 9h8M8 13h8M8 17h5"/></svg></div>
+        <p class="feature-pill-label">Relatórios<br>completos</p>
+      </div>
+    </div>
+
+  </div>
+</template>
+
+
+
+<!-- APLICAÇÃO PRINCIPAL (AUTENTICADO)                              -->
+
+<template x-if="currentUser">
+  <div class="app-wrapper">
+    
+    <!-- TOPBAR CABEÇALHO COM HAMBÚRGUER MOBILE -->
+    <header class="app-header">
+      <div class="flex items-center gap-2 sm:gap-2.5">
+        
+        <!-- Botão Menu Hambúrguer (Mobile) -->
+        <button type="button" class="action-btn !p-1.5 !h-8 !w-8 justify-center md:hidden" @click="mobileMenuOpen=true" title="Abrir Menu Completo">
+          <span x-html="getIcon('menu')"></span>
+        </button>
+
+        <div class="company-header-logo flex items-center justify-center overflow-hidden rounded-lg border border-[var(--primary)]/60 bg-white shadow-md">
+          <img :src="settings.companyLogo || './assets/icon-192.png'" alt="Logotipo da empresa" class="w-full h-full object-contain p-0.5">
+        </div>
+        <div class="min-w-0">
+          <h1 class="font-bold text-sm sm:text-base leading-tight text-[var(--primary-light)] truncate max-w-[200px] sm:max-w-none" x-text="settings.farmName"></h1>
+          <p class="text-[10px] text-[var(--text-main)] truncate max-w-[200px] sm:max-w-none" x-text="currentUser && currentUser.nome ? 'Olá, ' + currentUser.nome : ''"></p>
+        </div>
+      </div>
+
+      <!-- Controles Rápidos -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <template x-if="getActiveLote()">
+          <span class="badge hidden lg:inline-flex" :class="getHealthBadge(getSummaryKPIs().mortalityRate).class" x-text="getHealthBadge(getSummaryKPIs().mortalityRate).label"></span>
+        </template>
+
+        <button type="button" class="action-btn top-icon-btn sync-control icon-tooltip" :class="cloudStatus" @click="syncNow({silent:false, automatic:false})" :data-tooltip="getCloudSyncTitle()" :title="getCloudSyncTitle()" aria-label="Actualizar dados" :disabled="syncBusy">
+          <span :class="syncBusy ? 'is-spinning' : ''" x-html="getIcon('refresh')"></span>
+        </button>
+
+        <!-- Idioma -->
+        <div class="relative" x-data="{ languageOpen: false }">
+          <button type="button" class="action-btn top-icon-btn mobile-secondary-control !p-1.5 !h-8 !w-8 justify-center" @click="languageOpen=!languageOpen" :title="t('idioma') + ': ' + currentLang.toUpperCase()" aria-label="Escolher idioma" :aria-expanded="languageOpen">
+            <span x-html="getIcon('language')"></span>
+          </button>
+          <div x-show="languageOpen" x-cloak @click.outside="languageOpen=false" x-transition class="top-popover language-popover">
+            <p class="top-popover-title" x-text="t('idioma')"></p>
+            <button type="button" class="top-popover-option" :class="currentLang==='pt' && 'is-active'" @click="setLang('pt'); languageOpen=false">Português</button>
+            <button type="button" class="top-popover-option" :class="currentLang==='en' && 'is-active'" @click="setLang('en'); languageOpen=false">English</button>
+            <button type="button" class="top-popover-option" :class="currentLang==='fr' && 'is-active'" @click="setLang('fr'); languageOpen=false">Français</button>
+            <button type="button" class="top-popover-option" :class="currentLang==='sen' && 'is-active'" @click="setLang('sen'); languageOpen=false">Sena</button>
+            <button type="button" class="top-popover-option" :class="currentLang==='cga' && 'is-active'" @click="setLang('cga'); languageOpen=false">Changana</button>
+            <button type="button" class="top-popover-option" :class="currentLang==='emk' && 'is-active'" @click="setLang('emk'); languageOpen=false">Emakhuwa</button>
+          </div>
+        </div>
+
+        <!-- Voz -->
+        <button type="button" class="action-btn top-icon-btn voice-control mobile-secondary-control !p-1.5 !h-8 !w-8 justify-center" :class="voiceEnabled ? 'is-on' : 'is-off'" @click="openVoiceSettings()" :title="voiceEnabled ? 'Voz activa' : 'Activar voz'" aria-label="Definições de voz">
