@@ -1,0 +1,43 @@
+{
+  "hash": "4eb6ecb8",
+  "configHash": "54878b59",
+  "lockfileHash": "714e6e60",
+  "browserHash": "a1eec4f1",
+  "optimized": {
+    "alpinejs": {
+      "src": "../../node_modules/alpinejs/dist/module.esm.js",
+      "file": "alpinejs.js",
+      "fileHash": "14316129",
+      "needsInterop": false
+    },
+    "firebase/app": {
+      "src": "../../node_modules/firebase/app/dist/esm/index.esm.js",
+      "file": "firebase_app.js",
+      "fileHash": "dc23f1e0",
+      "needsInterop": false
+    },
+    "firebase/auth": {
+      "src": "../../node_modules/firebase/auth/dist/esm/index.esm.js",
+      "file": "firebase_auth.js",
+      "fileHash": "eeb788a2",
+      "needsInterop": false
+    },
+    "firebase/firestore": {
+      "src": "../../node_modules/firebase/firestore/dist/esm/index.esm.js",
+      "file": "firebase_firestore.js",
+      "fileHash": "9fe28a9f",
+      "needsInterop": false
+    },
+    "xlsx": {
+      "src": "../../node_modules/xlsx/xlsx.mjs",
+      "file": "xlsx.js",
+      "fileHash": "a27f34b5",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-YTN6X6RX": {
+      "file": "chunk-YTN6X6RX.js"
+    }
+  }
+}
