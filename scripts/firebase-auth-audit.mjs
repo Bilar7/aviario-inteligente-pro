@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+const auth = fs.readFileSync('src/app/methods_auth.js','utf8');
+const misc = fs.readFileSync('src/app/methods_misc.js','utf8');
+const core = fs.readFileSync('src/app/methods_core.js','utf8');
+const index = fs.readFileSync('index.html','utf8');
+const forbidden = ['aviario_local_accounts','_openLocalAccount','_findLocalAccount','_rememberLocalAccount','_readLocalAccounts','_writeLocalAccounts','_forgetLocalAccount','_cloudEmailForUsername'];
+const joined = auth + '\n' + misc + '\n' + core;
+for (const marker of forbidden) if (joined.includes(marker)) throw new Error(`Legacy auth marker remains: ${marker}`);
+if (!/createUserWithEmailAndPassword\(email, secret\)/.test(auth)) throw new Error('Signup does not use the real email directly.');
+if (!/signInWithEmailAndPassword\(input, secret\)/.test(auth)) throw new Error('Login does not use the real email directly.');
+if (!/batch\.set\(profileRef/.test(auth) || !/batch\.set\(farmRef/.test(auth)) throw new Error('Atomic Firestore registration markers missing.');
+if (!/profileRef\.get\(\)/.test(auth) || !/farmRef\.get\(\)/.test(auth)) throw new Error('Post-write Firestore verification missing.');
+if (!/main\.js\?v=25/.test(index)) throw new Error('Main asset cache-bust missing.');
+console.log('Firebase auth audit OK: no legacy local credential store; real-email Auth; atomic profile+farm write; post-write verification; fresh asset version.');

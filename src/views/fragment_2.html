@@ -1,0 +1,438 @@
+    <template x-teleport="body">
+<div x-show="showVoiceSettings" x-cloak class="app-modal" @keydown.escape.window="showVoiceSettings=false" x-transition.opacity role="dialog" aria-modal="true">
+      <div class="app-modal-card modal-lg shadow-2xl" @click.stop>
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow">ASSISTENTE</p>
+            <h2 class="modal-title" x-text="t('definicoesVoz')"></h2>
+            <p class="modal-subtitle">Escolha o narrador e teste a voz antes de utilizar o assistente.</p>
+          </div>
+          <button type="button" class="modal-close" @click="showVoiceSettings=false" aria-label="Fechar"><span x-html="getIcon('x')"></span></button>
+        </div>
+        <div class="voice-settings-list">
+          <button type="button" class="voice-option" :class="voiceEnabled && 'is-active'" @click="setVoiceEnabled(true)">
+            <span class="voice-option-icon" x-html="getIcon('volume')"></span>
+            <span class="flex-1 text-left"><strong x-text="t('ativa')"></strong><small>O assistente pode responder por voz.</small></span>
+            <span class="voice-option-check" x-show="voiceEnabled" x-html="getIcon('check')"></span>
+          </button>
+          <button type="button" class="voice-option" :class="!voiceEnabled && 'is-active'" @click="setVoiceEnabled(false)">
+            <span class="voice-option-icon" x-html="getIcon('mute')"></span>
+            <span class="flex-1 text-left"><strong x-text="t('silenciada')"></strong><small>A voz fica desactivada até ser activada novamente.</small></span>
+            <span class="voice-option-check" x-show="!voiceEnabled" x-html="getIcon('check')"></span>
+          </button>
+        </div>
+
+        <div class="mt-4">
+          <p class="label mb-2" x-text="t('tipoVoz')"></p>
+          <div class="voice-gender-list">
+            <button type="button" class="voice-gender-option" :class="voiceGender==='feminina' && 'is-active'" @click="setVoiceGender('feminina')">
+              <span class="flex-1 text-left"><strong x-text="t('vozFeminina')"></strong><small>Voz suave e clara</small></span>
+              <span x-show="voiceGender==='feminina'" x-html="getIcon('check')"></span>
+            </button>
+            <button type="button" class="voice-gender-option" :class="voiceGender==='masculina' && 'is-active'" @click="setVoiceGender('masculina')">
+              <span class="flex-1 text-left"><strong x-text="t('vozMasculina')"></strong><small>Voz firme e clara</small></span>
+              <span x-show="voiceGender==='masculina'" x-html="getIcon('check')"></span>
+            </button>
+          </div>
+        </div>
+        <div class="mt-4 flex justify-end gap-2">
+          <button type="button" class="btn btn-ghost" @click="speak(t('testeVoz'))"><span x-html="getIcon('play')"></span> <span x-text="t('testarVoz')"></span></button>
+          <button type="button" class="btn btn-primary" @click="showVoiceSettings=false"><span x-html="getIcon('check')"></span> <span x-text="t('guardar')"></span></button>
+        </div>
+      </div>
+    </div>
+</template>
+
+    
+    <div class="app-main">
+      
+      
+      <aside class="app-sidebar hidden md:flex">
+        <a x-show="canAccessView('dashboard')" href="#" class="navlink" :class="view==='dashboard' && 'active'" @click.prevent="goTo('dashboard')">
+          <span x-html="getIcon('dashboard')"></span> <span>Painel Geral</span>
+        </a>
+        <a x-show="canAccessView('controlo')" href="#" class="navlink" :class="view==='controlo' && 'active'" @click.prevent="goTo('controlo')">
+          <span x-html="getIcon('controlo')"></span> <span class="font-bold text-emerald-400">Controlo do Dia</span>
+        </a>
+        <a x-show="canAccessView('lotes')" href="#" class="navlink" :class="view==='lotes' && 'active'" @click.prevent="goTo('lotes')">
+          <span x-html="getIcon('lotes')"></span> <span>Lotes de Frangos</span>
+        </a>
+        <a x-show="canAccessView('racao')" href="#" class="navlink" :class="view==='racao' && 'active'" @click.prevent="goTo('racao')">
+          <span x-html="getIcon('racao')"></span> <span>Ração & Alimentação</span>
+        </a>
+        <a x-show="canAccessView('vendas')" href="#" class="navlink" :class="view==='vendas' && 'active'" @click.prevent="goTo('vendas')">
+          <span x-html="getIcon('vendas')"></span> <span>Vendas de Frangos</span>
+        </a>
+        <a x-show="canAccessView('financas')" href="#" class="navlink" :class="view==='financas' && 'active'" @click.prevent="goTo('financas')">
+          <span x-html="getIcon('financas')"></span> <span>Caixa & Finanças</span>
+        </a>
+        <a x-show="canAccessView('clientes')" href="#" class="navlink" :class="view==='clientes' && 'active'" @click.prevent="goTo('clientes')">
+          <span x-html="getIcon('clientes')"></span> <span>Clientes & Dívidas</span>
+        </a>
+        <a x-show="canAccessView('equipa')" href="#" class="navlink" :class="view==='equipa' && 'active'" @click.prevent="goTo('equipa')">
+          <span x-html="getIcon('equipa')"></span> <span>Presença & Equipa</span>
+        </a>
+        <a x-show="canAccessView('stock')" href="#" class="navlink" :class="view==='stock' && 'active'" @click.prevent="goTo('stock')">
+          <span x-html="getIcon('stock')"></span> <span>Inventário & Stock</span>
+        </a>
+
+        <div class="relative pt-1">
+          <button x-show="isAdmin()" type="button" class="navlink w-full" @click="moreOpen=!moreOpen" :aria-expanded="moreOpen">
+            <span x-html="getIcon('more')"></span> <span>Mais</span>
+          </button>
+          <div x-show="moreOpen" x-transition x-cloak class="mt-1 ml-2 pl-2 border-l border-[var(--border-color)] space-y-1">
+            <a x-show="canAccessView('despesas')" href="#" class="navlink" :class="view==='despesas' && 'active'" @click.prevent="goTo('despesas'); moreOpen=false"><span x-html="getIcon('despesas')"></span><span>Energia & Despesas</span></a>
+            <a x-show="canAccessView('planilha')" href="#" class="navlink" :class="view==='planilha' && 'active'" @click.prevent="goTo('planilha'); moreOpen=false"><span x-html="getIcon('planilha')"></span><span>Planilha Inteligente</span></a>
+            <a x-show="canAccessView('relatorios')" href="#" class="navlink" :class="view==='relatorios' && 'active'" @click.prevent="goTo('relatorios'); moreOpen=false"><span x-html="getIcon('relatorios')"></span><span>Relatórios & Fecho</span></a>
+            <a x-show="canAccessView('configuracoes')" href="#" class="navlink" :class="view==='configuracoes' && 'active'" @click.prevent="goTo('configuracoes'); moreOpen=false"><span x-html="getIcon('configuracoes')"></span><span>Definições</span></a>
+          </div>
+        </div>
+      </aside>
+
+      
+      <main class="app-content">
+<template x-if="!view || !['dashboard','controlo','lotes','racao','vendas','financas','clientes','equipa','despesas','stock','planilha','relatorios','configuracoes'].includes(view)">
+  <div class="card p-6 text-center">
+    <p class="font-bold text-sm">Painel Geral</p>
+    <p class="text-xs text-[var(--text-dim)] mt-1">A área anterior não está disponível. O sistema voltou ao Painel Geral.</p>
+    <button type="button" class="btn btn-primary btn-sm mt-3" @click="view='dashboard'">Abrir Painel Geral</button>
+  </div>
+</template>
+
+<template x-if="view==='dashboard'">
+          <div class="space-y-5">
+            
+            <!-- Seletor de Lote Rápido e Barra de Estado -->
+            <div class="card p-3.5 flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[var(--bg-card)] to-[var(--bg-card-2)]">
+              <div class="flex items-center gap-3">
+                <span class="w-8 h-8 flex items-center justify-center text-emerald-400" x-html="getIcon('lotes')"></span>
+                <div>
+                  <p class="label">Lote em Monitorização</p>
+                  <select class="input !py-1 text-xs font-bold" x-model="selectedLoteId" @change="runAiDiagnostics()">
+                    <template x-for="l in lotes" :key="l.id">
+                      <option :value="l.id" x-text="l.code + ' (' + l.breed + ') — ' + (l.status==='active' ? ' Ativo' : ' Fechado')"></option>
+                    </template>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Idade e Indicador -->
+              <template x-if="getActiveLote()">
+                <div class="flex items-center gap-3">
+                  <div class="text-right">
+                    <p class="text-xs text-[var(--text-dim)]">Idade do Lote</p>
+                    <p class="font-bold text-sm text-[var(--accent-gold)]" x-text="getLoteAgeDays(getActiveLote()) + ' Dias'"></p>
+                  </div>
+                  <span class="badge" :class="getHealthBadge(getSummaryKPIs().mortalityRate).class" x-text="getHealthBadge(getSummaryKPIs().mortalityRate).label"></span>
+                </div>
+              </template>
+            </div>
+
+            <!-- KPIs AUTOMÁTICOS: o operador lança dados; o sistema calcula o resto. -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div class="card kpi-card smart-kpi">
+                <p class="label">Aves disponíveis</p>
+                <p class="smart-value text-[var(--primary-light)]" x-text="fmtNum(getSmartKPIs().remainingBirds)"></p>
+                <p class="smart-hint">de <span x-text="fmtNum(getSmartKPIs().initialBirds)"></span> iniciais</p>
+              </div>
+              <div class="card kpi-card smart-kpi">
+                <p class="label">Mortalidade</p>
+                <p class="smart-value text-red-400" x-text="getSmartKPIs().mortalityRate + '%' "></p>
+                <p class="smart-hint"><span x-text="fmtNum(getSmartKPIs().deaths)"></span> mortes acumuladas</p>
+              </div>
+              <div class="card kpi-card smart-kpi">
+                <p class="label">Ração em stock</p>
+                <p class="smart-value text-[var(--accent-gold)]" x-text="fmtNum(getSmartKPIs().feedStockKg) + ' kg'"></p>
+                <p class="smart-hint" x-text="getSmartKPIs().feedStockDays > 0 ? getSmartKPIs().feedStockDays.toFixed(1) + ' dias estimados' : 'Sem histórico suficiente'"></p>
+              </div>
+              <div class="card kpi-card smart-kpi">
+                <p class="label">Custo acumulado</p>
+                <p class="smart-value font-mono" x-text="fmtMT(getSmartKPIs().totalExpenses)"></p>
+                <p class="smart-hint">pintos + operações registadas</p>
+              </div>
+              <div class="card kpi-card smart-kpi">
+                <p class="label">Receita realizada</p>
+                <p class="smart-value text-emerald-400 font-mono" x-text="fmtMT(getSmartKPIs().totalRevenue)"></p>
+                <p class="smart-hint"><span x-text="fmtMT(getSmartKPIs().accountsReceivable)"></span> a receber</p>
+              </div>
+              <div class="card kpi-card smart-kpi">
+                <p class="label">Resultado</p>
+                <p class="smart-value font-mono" :class="getSmartKPIs().netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'" x-text="fmtMT(getSmartKPIs().netProfit)"></p>
+                <p class="smart-hint">Margem <span x-text="getSmartKPIs().profitMargin.toFixed(1) + '%' "></span></p>
+              </div>
+            </div>
+
+            <!-- STATUS AUTOMÁTICO -->
+            <div class="smart-status" :class="'is-' + getSmartStatus().type">
+              <div class="smart-status-icon" x-text="getSmartStatus().type==='critical' ? '!' : (getSmartStatus().type==='warning' ? '!' : (getSmartStatus().type==='success' ? '✓' : 'i'))"></div>
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-sm" x-text="getSmartStatus().label"></p>
+                <p class="text-xs mt-0.5 text-[var(--text-muted)]" x-text="getSmartStatus().message"></p>
+              </div>
+            </div>
+
+            <!-- DIAGNÓSTICOS INTELIGENTES & ALERTAS DE IA -->
+            <div class="card p-4 space-y-3 border-l-4 border-l-[var(--primary)]">
+              <div class="flex items-center gap-2">
+                <span x-html="getIcon('alertas')"></span>
+                <p class="font-bold text-sm text-[var(--primary-light)]">Diagnósticos & Alertas Inteligentes</p>
+              </div>
+
+              <div class="space-y-2">
+                <template x-for="n in notifications" :key="n.id">
+                  <div class="card-2 p-3 flex items-start gap-3"
+                       :class="n.type==='critical' ? 'border-red-500/50 bg-red-950/20' : (n.type==='warning' ? 'border-amber-500/50 bg-amber-950/20' : 'border-emerald-500/40 bg-emerald-950/20')">
+                    <span class="text-lg" x-html="getIcon('alertas')"></span>
+                    <div class="flex-1">
+                      <p class="font-bold text-xs sm:text-sm text-[var(--text-main)]" x-text="n.title"></p>
+                      <p class="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed" x-text="n.message"></p>
+                    </div>
+                  </div>
+                </template>
+                <p x-show="notifications.length===0" class="text-xs text-[var(--text-dim)] p-2"> Todos os parâmetros de mortalidade, ração e finanças estão dentro dos limites normais.</p>
+              </div>
+            </div>
+
+            <!-- PROJEÇÃO AUTOMÁTICA DO LOTE -->
+            <template x-if="getActiveLote()">
+              <div class="card p-4 space-y-4 smart-panel">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p class="label text-[var(--accent-gold)]">Previsão automática do lote</p>
+                    <p class="text-xs text-[var(--text-dim)] mt-1">Valores estimados a partir dos registos existentes; podem ser confirmados ou ajustados pelos dados reais.</p>
+                  </div>
+                  <span class="badge badge-normal" x-text="getSmartKPIs().projection.daysLeft + ' dias até à meta'"></span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                  <div class="card-2 p-3"><p class="label">Idade</p><p class="smart-mini" x-text="getSmartKPIs().projection.age + ' dias'"></p></div>
+                  <div class="card-2 p-3"><p class="label">Peso atual</p><p class="smart-mini" x-text="getSmartKPIs().projection.weight > 0 ? getSmartKPIs().projection.weight.toFixed(2) + ' kg' : 'Aguardando pesagem'"></p></div>
+                  <div class="card-2 p-3"><p class="label">Meta de peso</p><p class="smart-mini" x-text="getSmartKPIs().projection.targetWeight.toFixed(2) + ' kg'"></p></div>
+                  <div class="card-2 p-3"><p class="label">Aves previstas</p><p class="smart-mini" x-text="fmtNum(getSmartKPIs().projection.expectedBirds)"></p></div>
+                  <div class="card-2 p-3"><p class="label">Produção prevista</p><p class="smart-mini" x-text="fmtNum(getSmartKPIs().projection.productionKg) + ' kg'"></p></div>
+                  <div class="card-2 p-3"><p class="label">Saída estimada</p><p class="smart-mini" x-text="formatShortDate(getSmartKPIs().projection.targetDate)"></p></div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div class="smart-money"><span>Receita projetada</span><strong x-text="fmtMT(getSmartKPIs().projection.revenue)"></strong></div>
+                  <div class="smart-money"><span>Custo estimado</span><strong x-text="fmtMT(getSmartKPIs().projection.costs)"></strong></div>
+                  <div class="smart-money"><span>Resultado projetado</span><strong :class="getSmartKPIs().projection.profit >= 0 ? 'text-emerald-400' : 'text-red-400'" x-text="fmtMT(getSmartKPIs().projection.profit)"></strong></div>
+                </div>
+              </div>
+            </template>
+
+            <!-- AGENDA OPERACIONAL & SAÚDE -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div class="card p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="label">Agenda automática</p>
+                    <p class="text-[11px] text-[var(--text-dim)]">O sistema calcula as próximas tarefas com base nos lotes e tratamentos.</p>
+                  </div>
+                  <span class="badge badge-normal" x-text="getDailyAgenda().length + ' tarefas'"></span>
+                </div>
+                <div class="space-y-2">
+                  <template x-for="item in getDailyAgenda()" :key="item.date + item.title">
+                    <button type="button" class="w-full text-left card-2 p-2.5 flex items-start gap-2 hover:border-[var(--primary)]" @click="goTo(item.view)">
+                      <span class="mt-0.5" x-text="item.type==='warning' ? '!' : 'i'"></span>
+                      <span class="min-w-0 flex-1"><b class="text-xs" x-text="item.title"></b><small class="block text-[10px] text-[var(--text-dim)]" x-text="item.detail"></small></span>
+                    </button>
+                  </template>
+                  <p x-show="getDailyAgenda().length===0" class="text-xs text-[var(--text-dim)]">Sem tarefas pendentes.</p>
+                </div>
+              </div>
+              <div class="card p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <div><p class="label">Saúde & Vacinação</p><p class="text-[11px] text-[var(--text-dim)]">Registe vacina, medicamento ou tratamento sem criar contas paralelas.</p></div>
+                  <button type="button" class="btn btn-primary btn-sm text-xs font-bold" @click="openHealthModal()">+ Registar</button>
+                </div>
+                <div class="space-y-2 max-h-32 overflow-auto">
+                  <template x-for="h in (healthLogs||[]).slice(0,5)" :key="h.id">
+                    <div class="card-2 p-2.5 flex justify-between gap-2"><div><b class="text-xs" x-text="h.type + ' — ' + h.product"></b><small class="block text-[10px] text-[var(--text-dim)]" x-text="h.date + ' · ' + h.loteCode + (h.nextDate ? ' · Próx.: ' + h.nextDate : '')"></small></div><span class="text-[10px] font-mono text-amber-400" x-text="h.cost ? fmtMT(h.cost) : 'Sem custo'" ></span></div>
+                  </template>
+                  <p x-show="!(healthLogs||[]).length" class="text-xs text-[var(--text-dim)]">Nenhum tratamento registado.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- AÇÕES RÁPIDAS -->
+            <div class="card p-4 space-y-3">
+              <div class="flex items-center gap-2">
+                <span class="w-5 h-5 text-[var(--primary-light)]" x-html="getIcon('controlo')" aria-hidden="true"></span>
+                <p class="label">Ações Rápidas de Maneio</p>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <template x-for="action in getSmartActions()" :key="action.label">
+                  <button type="button" class="btn btn-ghost text-xs sm:text-sm justify-center gap-2" @click="view=action.view">
+                    <span>⚡</span><span x-text="action.label"></span>
+                  </button>
+                </template>
+                <button type="button" class="btn btn-primary text-xs sm:text-sm justify-center font-bold gap-2" @click="view='vendas'" aria-label="Nova venda">
+                   <span x-html="getIcon('vendas')" aria-hidden="true"></span><span>Nova Venda</span>
+                </button>
+                <button type="button" class="btn btn-gold text-xs sm:text-sm justify-center font-bold gap-2" @click="exportExcel()" aria-label="Exportar Excel">
+                   <span x-html="getIcon('excel')" aria-hidden="true"></span><span>Exportar Excel</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </template>
+
+
+        
+        <!-- VIEW: CONTROLO DO DIA (MAPA DIÁRIO DE PRODUTOS & VENDAS)       -->
+        
+        <template x-if="view==='controlo'">
+          <div class="space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 card p-3.5 bg-gradient-to-r from-[var(--bg-card)] to-[var(--bg-card-2)]">
+              <div>
+                <p class="text-xs text-[var(--text-dim)]">Responsável: <b class="text-[var(--text-main)]" x-text="currentUser ? currentUser.nome : '—'"></b></p>
+                <div class="flex items-center gap-2 mt-1">
+                  <input type="date" class="input !w-auto !h-8 text-xs font-mono font-bold" x-model="selectedDate" @change="ensureDay(selectedDate)">
+                  <span class="badge font-mono font-bold text-xs" :class="dayRecord(selectedDate).status==='open' ? 'badge-normal' : 'badge-danger'" x-text="dayRecord(selectedDate).status==='open' ? ' ABERTO' : ' FECHADO'"></span>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-1.5 sm:gap-2">
+                <button type="button" class="action-btn text-xs font-bold" :disabled="dayRecord(selectedDate).status==='closed'" @click="aplicarRemanescenteComoInicial(selectedDate)">
+                  <span class="w-3.5 h-3.5 block" x-html="getIcon('controlo')"></span> Puxar Sobrou
+                </button>
+                <button type="button" class="action-btn danger text-xs" :disabled="dayRecord(selectedDate).status==='closed'" @click="zerarPlanilha(selectedDate)">
+                  <span class="w-3.5 h-3.5 block" x-html="getIcon('trash')"></span> Limpar
+                </button>
+                <button type="button" class="action-btn text-xs font-bold text-emerald-400" @click="exportDailyExcel(selectedDate)">
+                  <span class="w-3.5 h-3.5 block" x-html="getIcon('excel')"></span> Excel
+                </button>
+                <button type="button" class="action-btn text-xs !bg-emerald-500/20 !border-emerald-500/50 text-emerald-400 font-bold" @click="openAddProductModal()">
+                  <span class="w-3.5 h-3.5 block" x-html="getIcon('plus')"></span> + Linha
+                </button>
+              </div>
+            </div>
+
+            <div class="card table-scroll-box shadow-xl overflow-x-auto">
+              <table class="w-full text-xs sm:text-sm min-w-[700px]">
+                <thead>
+                  <tr class="text-left text-[var(--text-dim)] text-[10px] sm:text-xs uppercase tracking-wide border-b border-[var(--border-color)] bg-[var(--bg-card-2)]">
+                    <th class="p-2.5 sm:p-3">PRODUTOS</th>
+                    <th class="p-2.5 sm:p-3 font-mono">PREÇO</th>
+                    <th class="p-2.5 sm:p-3 font-mono text-center">INICIAL</th>
+                    <th class="p-2.5 sm:p-3 text-center">ENTRADA</th>
+                    <th class="p-2.5 sm:p-3 font-mono text-center">DISPONÍVEL</th>
+                    <th class="p-2.5 sm:p-3 text-center">SOBROU</th>
+                    <th class="p-2.5 sm:p-3 font-mono text-center">VENDAS</th>
+                    <th class="p-2.5 sm:p-3 font-mono text-right">TOTAL</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="p in activeProducts()" :key="p.id">
+                    <tr class="ledger-row align-middle border-b border-[var(--border-color)]/40 hover:bg-[var(--surface-hover)]">
+                      <td class="p-2.5 sm:p-3 font-medium">
+                        <p class="font-bold text-[var(--text-main)]" x-text="p.name"></p>
+                      </td>
+                      <td class="p-2.5 sm:p-3 font-mono text-[var(--accent-gold)] font-bold" x-text="p.price ? fmtMT(p.price) : '—'"></td>
+                      <td class="p-2.5 sm:p-3 font-mono text-center">
+                        <span class="font-bold" x-text="recordFor(p.id, selectedDate).stockInicial"></span>
+                      </td>
+                      <td class="p-2.5 sm:p-3 text-center">
+                        <div class="flex items-center justify-center gap-1">
+                          <span class="font-mono font-bold" x-text="entradaTotal(recordFor(p.id, selectedDate))"></span>
+                          <button type="button" class="action-btn !p-1 !h-5 !w-5 justify-center text-xs" :disabled="dayRecord(selectedDate).status==='closed'" @click="openEntradaModalFor(p)">+</button>
+                        </div>
+                      </td>
+                      <td class="p-2.5 sm:p-3 font-mono font-bold text-center text-blue-400" x-text="disponivel(recordFor(p.id, selectedDate))"></td>
+                      <td class="p-2.5 sm:p-3 text-center">
+                        <div class="flex items-center justify-center gap-1.5">
+                          <input type="number" min="0" class="input !w-16 !h-7 !p-1 text-xs font-mono font-bold text-center" 
+                                 :placeholder="recordFor(p.id, selectedDate).remanescente !== null ? recordFor(p.id, selectedDate).remanescente : '—'" 
+                                 x-model="remInputs[p.id]"
+                                 :disabled="dayRecord(selectedDate).status==='closed'"
+                                 @keyup.enter="saveRemanescente(p.id)">
+                          <button type="button" class="action-btn !p-1 !h-7 text-xs text-emerald-400 font-bold" :disabled="dayRecord(selectedDate).status==='closed'" @click="saveRemanescente(p.id)" title="Guardar remanescente" aria-label="Guardar remanescente"><span x-html="getIcon('check')"></span></button>
+                        </div>
+                      </td>
+                      <td class="p-2.5 sm:p-3 font-mono font-bold text-center text-emerald-400" x-text="saida(recordFor(p.id, selectedDate)) !== null ? saida(recordFor(p.id, selectedDate)) : '—'"></td>
+                      <td class="p-2.5 sm:p-3 font-mono font-bold text-right text-emerald-400" x-text="totalVendido(recordFor(p.id, selectedDate), p) !== null ? fmtMT(totalVendido(recordFor(p.id, selectedDate), p)) : '—'"></td>
+                    </tr>
+                  </template>
+                </tbody>
+                <tfoot>
+                  <tr class="border-t-2 border-[var(--primary)] bg-[var(--bg-card-2)] font-mono font-bold">
+                    <td colspan="6" class="p-3 text-right uppercase text-xs text-[var(--accent-gold)]">Total Geral do Dia:</td>
+                    <td class="p-3 text-center text-sm text-emerald-400" x-text="dayTotals(selectedDate).totalUnidades + ' itens'"></td>
+                    <td class="p-3 text-right text-base text-emerald-400" x-text="fmtMT(dayTotals(selectedDate).totalVendas)"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </template>
+
+
+<template x-if="view==='lotes'">
+          <div class="space-y-5">
+            
+            <!-- Top Header com Botões de Ação -->
+            <div class="card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 border-l-[var(--primary)]">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span x-html="getIcon('lotes')"></span>
+                  <h2 class="text-xl font-bold font-serif text-[var(--text-main)]">Lotes de Frangos</h2>
+                </div>
+                <p class="text-xs text-[var(--text-dim)] mt-0.5">Acompanhe o crescimento, saúde, alimentação e desempenho de cada lote.</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+<div class="modern-search">
+                  <span x-html="getIcon('search')"></span>
+                  <input type="search" aria-label="Pesquisar lote" placeholder="Pesquisar lote..." x-model="loteSearch" @keyup.enter="loteSearch=loteSearch.trim()">
+                  <button type="button" x-show="loteSearch" @click="loteSearch=''" title="Limpar pesquisa" aria-label="Limpar pesquisa"><span x-html="getIcon('x')"></span></button>
+                  <button type="button" @click="loteSearch=loteSearch.trim()" title="Pesquisar" aria-label="Pesquisar"><span x-html="getIcon('arrowRight')"></span></button>
+                </div>
+                <button x-show="canCreateOperationalLote()" type="button" class="modern-action primary" @click="openNewLote()">
+                  <span x-html="getIcon('plus')"></span><span>Novo Lote</span>
+                </button>
+                <select class="modern-select" x-model="loteStatusFilter" aria-label="Filtrar lotes">
+                  <option value="active">Activos</option>
+                  <option value="closed">Encerrados</option>
+                  <option value="all">Todos</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 6 Cartões de Resumo no Topo (KPIs de Lotes) -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <!-- 1. Total Frangos -->
+              <div class="card p-3.5 space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--text-dim)]"> TOTAL</span>
+                </div>
+                <p class="text-xl sm:text-2xl font-extrabold font-mono text-emerald-400" x-text="fmtNum(getLotesSummary().totalBirds) + ' frangos'"></p>
+                <p class="text-[10px] text-[var(--text-dim)]">Efectivo vivo actual</p>
+              </div>
+
+              <!-- 2. Mortalidade Global -->
+              <div class="card p-3.5 space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--text-dim)]"> MORTALIDADE</span>
+                </div>
+                <p class="text-xl sm:text-2xl font-extrabold font-mono text-red-400" x-text="getLotesSummary().mortalityRate + '%'"></p>
+                <p class="text-[10px] text-[var(--text-dim)]">Média dos lotes</p>
+              </div>
+
+              <!-- 3. Peso Médio -->
+              <div class="card p-3.5 space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--text-dim)]"> PESO MÉDIO</span>
+                </div>
+                <p class="text-xl sm:text-2xl font-extrabold font-mono text-[var(--primary-light)]" x-text="getLotesSummary().avgWeight + ' kg'"></p>
+                <p class="text-[10px] text-[var(--text-dim)]">Desenvolvimento</p>
+              </div>
+
+              <!-- 4. Ração Consumida -->
+              <div class="card p-3.5 space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--text-dim)]"> RAÇÃO</span>
+                </div>
+                <p class="text-xl sm:text-2xl font-extrabold font-mono text-[var(--accent-gold)]" x-text="fmtNum(getLotesSummary().totalFeedKg) + ' kg'"></p>
+                <p class="text-[10px] text-[var(--text-dim)]">Consumo acumulado</p>
+              </div>
+
+              <!-- 5. Frangos Vendidos -->

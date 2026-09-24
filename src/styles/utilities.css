@@ -1,0 +1,128 @@
+/* ==========================================================================
+   CROSS-CUTTING UTILITIES — MODAL LAYER / TABLES / PRINT / SAFE LOCAL MODE
+   ========================================================================== */
+
+/*
+   MODAL SYSTEM — PADRÃO ÚNICO
+   Inspirado no modal de referência AgroBilar:
+   overlay fixo, centragem real, cartão com scroll interno e portal para BODY.
+*/
+.app-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483000 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px !important;
+  margin: 0 !important;
+  background: rgba(0,0,0,.80) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  overflow: hidden !important;
+  overscroll-behavior: contain;
+  isolation: isolate;
+}
+
+.app-modal-card {
+  position: relative !important;
+  z-index: 1 !important;
+  width: min(512px, calc(100vw - 32px)) !important;
+  max-width: 512px !important;
+  max-height: 90vh !important;
+  max-height: calc(100dvh - 32px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  margin: auto !important;
+  padding: 20px !important;
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 2px solid var(--primary) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,.48) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  scrollbar-gutter: stable;
+}
+.app-modal-card.modal-sm{width:min(420px,calc(100vw - 32px)) !important;max-width:420px !important}
+.app-modal-card.modal-md{width:min(560px,calc(100vw - 32px)) !important;max-width:560px !important}
+.app-modal-card.modal-lg{width:min(760px,calc(100vw - 32px)) !important;max-width:760px !important}
+.app-modal-card.modal-xl{width:min(920px,calc(100vw - 32px)) !important;max-width:920px !important}
+.new-lote-modal-card{width:min(720px,calc(100vw - 32px)) !important;max-width:720px !important;border-radius:24px !important;box-shadow:0 30px 90px rgba(0,0,0,.34) !important}
+
+.app-modal-card .input { min-width: 0; }
+.app-modal-card textarea.input { min-height: 88px; }
+.app-modal-card select.input { min-width: 0; }
+
+.modal-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.modal-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding-top:12px;margin-top:4px;border-top:1px solid var(--border-color)}
+
+.table-scroll-box{width:100% !important;overflow-x:auto !important}
+
+#report-print-area{position:relative;overflow:hidden}
+#report-print-area>*{position:relative;z-index:1}
+.report-brand-line{font-size:10px;color:#64748b;margin-top:6px}
+
+/* Safe local mode warning */
+#file-protocol-warning[hidden]{display:none !important}
+#file-protocol-warning{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(15,23,42,.96);font-family:system-ui,sans-serif}
+.file-warning-card{max-width:520px;width:100%;background:#fff;color:#0f172a;border-radius:16px;padding:28px;box-shadow:0 24px 60px rgba(0,0,0,.35);line-height:1.55}
+.file-warning-card code{background:#eef2f7;padding:2px 6px;border-radius:5px}
+
+@media(max-width:640px){
+  .app-modal{align-items:flex-start !important;padding:12px !important}
+  .app-modal-card,.app-modal-card.modal-sm,.app-modal-card.modal-md,.app-modal-card.modal-lg,.app-modal-card.modal-xl{width:100% !important;max-width:none !important;max-height:calc(100dvh - 24px) !important;margin:0 auto !important;padding:16px !important}
+  .modal-grid-2{grid-template-columns:1fr}
+}
+
+@media print{.app-modal{display:none !important}}
+
+
+/* Mobile navigation drawer — same overlay discipline as dialogs. */
+.mobile-drawer{
+  position:fixed !important;
+  inset:0 !important;
+  z-index:2147482000 !important;
+  display:flex;
+  justify-content:flex-start !important;
+  background:rgba(2,8,6,.76) !important;
+  padding:0 !important;
+}
+.mobile-drawer-content{
+  width:min(320px,88vw) !important;
+  height:100dvh !important;
+  max-height:100dvh !important;
+  overflow:hidden !important;
+  padding:16px !important;
+  background:var(--bg-card) !important;
+  border-right:1px solid var(--border-color) !important;
+  box-shadow:24px 0 70px rgba(0,0,0,.40) !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+
+.app-toasts{
+  position:fixed !important;
+  top:16px !important;
+  right:16px !important;
+  z-index:2147483500 !important;
+  width:min(380px,calc(100vw - 32px)) !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:8px !important;
+  pointer-events:none;
+}
+.app-toasts>*{pointer-events:auto}
+@media(max-width:640px){.app-toasts{left:12px !important;right:12px !important;top:12px !important;width:auto !important}}
+
+/* Modal borders de estado — mantêm a mesma estrutura, mudam apenas a cor. */
+.app-modal-card.border-amber-500\/40 { border-color: rgba(245,158,11,.4) !important; }
+.app-modal-card.border-red-500\/40 { border-color: rgba(239,68,68,.4) !important; }
+
+/* O portal do modal fica fora do scroll principal; nunca permitir que o app o recorte. */
+#app-root { position: static !important; overflow: visible !important; }
+
+.new-lote-modal-card .modal-grid-2{gap:16px}.new-lote-modal-card .modal-actions{position:sticky;bottom:0;background:linear-gradient(to top,var(--bg-card) 72%,transparent);padding-top:16px;margin-top:6px}

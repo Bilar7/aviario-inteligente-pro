@@ -1,0 +1,457 @@
+              <div class="card p-4 space-y-3">
+                <h4 class="font-bold text-xs uppercase tracking-wider text-[var(--text-dim)]"> Distribuição Percentual de Custos</h4>
+                <div class="space-y-2">
+                  <template x-for="c in getExpenseCategoriesBreakdown().list" :key="c.category">
+                    <div class="space-y-1">
+                      <div class="flex justify-between text-xs font-semibold">
+                        <span x-text="c.category"></span>
+                        <span class="font-mono text-red-400" x-text="fmtMT(c.amount) + ' (' + c.percentage + '%)'"></span>
+                      </div>
+                      <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
+                        <div class="h-full bg-red-500 rounded-full transition-all duration-500" :style="'width: ' + c.percentage + '%'"></div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Tabela de Despesas -->
+              <div class="card table-scroll-box shadow-xl overflow-x-auto">
+                <table class="w-full text-xs sm:text-sm min-w-[650px]">
+                  <thead>
+                    <tr class="text-left text-[var(--text-dim)] text-[10px] sm:text-xs uppercase tracking-wide border-b border-[var(--border-color)] bg-[var(--bg-card-2)]">
+                      <th class="p-3">Data</th>
+                      <th class="p-3">Categoria</th>
+                      <th class="p-3">Descrição da Despesa</th>
+                      <th class="p-3">Forma Pagto</th>
+                      <th class="p-3">Estado</th>
+                      <th class="p-3 font-mono text-right text-red-400">Valor (MT)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="e in expenses" :key="e.id">
+                      <tr class="align-middle border-b border-[var(--border-color)]/40 hover:bg-[var(--surface-hover)]">
+                        <td class="p-3 font-mono text-xs font-bold" x-text="e.date"></td>
+                        <td class="p-3 font-semibold text-red-400" x-text="e.category"></td>
+                        <td class="p-3 font-medium text-[var(--text-main)]" x-text="e.desc"></td>
+                        <td class="p-3 font-mono text-xs" x-text="e.paymentMethod"></td>
+                        <td class="p-3">
+                          <span class="badge text-[10px] font-bold" :class="e.status==='Pago' ? 'badge-normal' : 'badge-danger'" x-text="e.status"></span>
+                        </td>
+                        <td class="p-3 font-mono font-bold text-right text-red-400" x-text="fmtMT(e.amount)"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+
+            <!-- ========================================================== -->
+            <!-- 5. SUB-VIEW: CONTAS A RECEBER (DÍVIDAS DE CLIENTES)        -->
+            <!-- ========================================================== -->
+            <div x-show="finView==='a_receber'" x-cloak class="space-y-4">
+              <div class="card p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-l-4 border-l-amber-500">
+                <div class="flex items-center gap-3">
+                  <button type="button" class="btn btn-ghost btn-sm font-bold text-xs !w-9 !h-9 !p-0 justify-center" @click="finView='visao_geral'" title="Voltar" aria-label="Voltar">
+                    <span x-html="getIcon('arrowLeft')"></span>
+                  </button>
+                  <div class="h-4 w-px bg-[var(--border-color)]"></div>
+                  <h3 class="font-bold text-base text-amber-400"> Contas a Receber & Créditos</h3>
+                </div>
+                <button type="button" class="action-btn !bg-amber-600 !text-white text-xs font-bold" @click="showModalPagamento=true">
+                  <span x-html="getIcon('check')"></span> <span>Registar Pagamento</span>
+                </button>
+              </div>
+
+              <!-- Cartões de Clientes Devedores -->
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <template x-for="c in (clients||[]).filter(cl => (Number(cl.debt)||0) > 0)" :key="c.id">
+                  <div class="card p-4 space-y-3 border-l-4 border-l-amber-500 shadow-xl">
+                    <div class="flex items-start justify-between">
+                      <div>
+                        <h4 class="font-bold text-sm sm:text-base text-[var(--text-main)]" x-text="c.name"></h4>
+                        <p class="text-xs text-[var(--text-dim)] font-mono" x-text="c.phone || 'Sem telefone'"></p>
+                      </div>
+                      <span class="badge badge-warning text-xs font-bold font-mono" x-text="fmtMT(c.debt)"></span>
+                    </div>
+
+                    <div class="flex gap-2 pt-2 border-t border-[var(--border-color)]">
+                      <button type="button" class="action-btn whatsapp flex-1 justify-center text-xs font-bold" @click="openCobrarClienteWhatsApp(c)">
+                        <span x-html="getIcon('whatsapp')"></span> <span>WhatsApp</span>
+                      </button>
+                      <button type="button" class="action-btn !bg-emerald-600 !text-white flex-1 justify-center text-xs font-bold" @click="openPaymentModalForClient(c)">
+                        <span x-html="getIcon('arrowDown')"></span> <span>Amortizar</span>
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+              <div x-show="(clients||[]).filter(cl => (Number(cl.debt)||0) > 0).length===0" class="p-8 text-center bg-slate-950/20 rounded-xl border border-[var(--border-color)] space-y-1">
+                <p class="text-base"></p>
+                <p class="text-xs font-bold text-emerald-400">Excelente! Não existem dívidas pendentes de clientes no momento.</p>
+              </div>
+            </div>
+
+
+            <!-- ========================================================== -->
+            <!-- 6. SUB-VIEW: CONTAS A PAGAR                                -->
+            <!-- ========================================================== -->
+            <div x-show="finView==='a_pagar'" x-cloak class="space-y-4">
+              <div class="card p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-l-4 border-l-blue-500">
+                <div class="flex items-center gap-3">
+                  <button type="button" class="btn btn-ghost btn-sm font-bold text-xs !w-9 !h-9 !p-0 justify-center" @click="finView='visao_geral'" title="Voltar" aria-label="Voltar">
+                    <span x-html="getIcon('arrowLeft')"></span>
+                  </button>
+                  <div class="h-4 w-px bg-[var(--border-color)]"></div>
+                  <h3 class="font-bold text-base text-blue-400"> Contas a Pagar & Fornecedores</h3>
+                </div>
+                <button type="button" class="action-btn !bg-blue-600 !text-white text-xs font-bold" @click="showModalSaida=true">
+                  <span x-html="getIcon('despesas')"></span> <span>Nova Conta a Pagar</span>
+                </button>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <template x-for="exp in (expenses||[]).filter(e => e.status==='Pendente')" :key="exp.id">
+                  <div class="card p-4 space-y-3 border-l-4 border-l-blue-500 shadow-xl">
+                    <div class="flex items-start justify-between">
+                      <div>
+                        <h4 class="font-bold text-sm text-[var(--text-main)]" x-text="exp.desc"></h4>
+                        <p class="text-xs text-[var(--text-dim)]" x-text="exp.category + ' · Vencimento: ' + exp.date"></p>
+                      </div>
+                      <span class="badge badge-danger text-xs font-bold font-mono" x-text="fmtMT(exp.amount)"></span>
+                    </div>
+
+                    <div class="flex justify-end pt-2 border-t border-[var(--border-color)]">
+                      <button type="button" class="btn btn-primary btn-sm text-xs font-bold" @click="liquidateExpenseDirectly(exp)">
+                        <span x-html="getIcon('check')"></span> <span>Liquidar Pagamento</span>
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+              <div x-show="(expenses||[]).filter(e => e.status==='Pendente').length===0" class="p-8 text-center bg-slate-950/20 rounded-xl border border-[var(--border-color)] space-y-1">
+                <p class="text-base"></p>
+                <p class="text-xs font-bold text-emerald-400">Todas as contas de fornecedores e despesas estão liquidadas.</p>
+              </div>
+            </div>
+
+
+            <!-- ========================================================== -->
+            <!-- 7. SUB-VIEW: ANÁLISES FINANCEIRAS & GRÁFICOS DETALHADOS    -->
+            <!-- ========================================================== -->
+            <div x-show="finView==='analises'" x-cloak class="space-y-4">
+              <div class="card p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-l-4 border-l-purple-500">
+                <div class="flex items-center gap-3">
+                  <button type="button" class="btn btn-ghost btn-sm font-bold text-xs !w-9 !h-9 !p-0 justify-center" @click="finView='visao_geral'" title="Voltar" aria-label="Voltar">
+                    <span x-html="getIcon('arrowLeft')"></span>
+                  </button>
+                  <div class="h-4 w-px bg-[var(--border-color)]"></div>
+                  <h3 class="font-bold text-base text-purple-400"> Análises Financeiras Detalhadas</h3>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <!-- Gráfico de Estrutura -->
+                <div class="card p-4 space-y-3">
+                  <h4 class="font-bold text-xs uppercase tracking-wider text-[var(--accent-gold)]"> Estrutura de Custos</h4>
+                  <div class="space-y-2.5">
+                    <template x-for="c in getExpenseCategoriesBreakdown().list" :key="c.category">
+                      <div class="space-y-1">
+                        <div class="flex justify-between text-xs font-semibold">
+                          <span x-text="c.category"></span>
+                          <span class="font-mono text-emerald-400" x-text="fmtMT(c.amount) + ' (' + c.percentage + '%)'"></span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
+                          <div class="h-full bg-emerald-500 rounded-full" :style="'width: ' + c.percentage + '%'"></div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+
+                <!-- Rentabilidade & Indicadores -->
+                <div class="card p-4 space-y-3">
+                  <h4 class="font-bold text-xs uppercase tracking-wider text-emerald-400"> Indicadores de Rentabilidade</h4>
+                  <div class="grid grid-cols-2 gap-3 text-center">
+                    <div class="card-2 p-3">
+                      <p class="label">Margem Líquida</p>
+                      <p class="text-xl font-extrabold font-mono text-emerald-400 mt-1" x-text="getEliteFinSummary('este_mes').margemLucro + '%'"></p>
+                    </div>
+                    <div class="card-2 p-3">
+                      <p class="label">Custo por Frango</p>
+                      <p class="text-xl font-extrabold font-mono text-[var(--accent-gold)] mt-1" x-text="fmtMT((getSummaryKPIs().totalFeedKg/50*2100) / (getSummaryKPIs().initialBirds || 1))"></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
+            <!-- ========================================================== -->
+            <!-- 8. SUB-VIEW: ANÁLISE INTELIGENTE IA                        -->
+            <!-- ========================================================== -->
+            <div x-show="finView==='ia_analise'" x-cloak class="space-y-4">
+              <div class="card p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-l-4 border-l-emerald-400">
+                <div class="flex items-center gap-3">
+                  <button type="button" class="btn btn-ghost btn-sm font-bold text-xs !w-9 !h-9 !p-0 justify-center" @click="finView='visao_geral'" title="Voltar" aria-label="Voltar">
+                    <span x-html="getIcon('arrowLeft')"></span>
+                  </button>
+                  <div class="h-4 w-px bg-[var(--border-color)]"></div>
+                  <h3 class="font-bold text-base text-emerald-400"> Diagnóstico Inteligente & Análise IA</h3>
+                </div>
+              </div>
+
+              <!-- Cartões de Diagnósticos Reais -->
+              <div class="space-y-3">
+                <template x-for="insight in getAiFinancialInsights()" :key="insight.title">
+                  <div class="card p-4 flex items-start gap-3.5 shadow-xl"
+                       :class="insight.type==='critical' ? 'border-red-500/50 bg-red-950/20' : (insight.type==='warning' ? 'border-amber-500/50 bg-amber-950/20' : 'border-emerald-500/40 bg-emerald-950/20')">
+                    <span class="text-2xl" x-text="insight.icon"></span>
+                    <div class="space-y-1">
+                      <h4 class="font-bold text-sm text-[var(--text-main)]" x-text="insight.title"></h4>
+                      <p class="text-xs text-[var(--text-muted)] leading-relaxed" x-text="insight.desc"></p>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+
+            <!-- ========================================================== -->
+            <!-- 9. SUB-VIEW: AUDITORIA FINANCEIRA                          -->
+            <!-- ========================================================== -->
+            <div x-show="finView==='auditoria'" x-cloak class="space-y-4">
+              <div class="card p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-l-4 border-l-blue-400">
+                <div class="flex items-center gap-3">
+                  <button type="button" class="btn btn-ghost btn-sm font-bold text-xs !w-9 !h-9 !p-0 justify-center" @click="finView='visao_geral'" title="Voltar" aria-label="Voltar">
+                    <span x-html="getIcon('arrowLeft')"></span>
+                  </button>
+                  <div class="h-4 w-px bg-[var(--border-color)]"></div>
+                  <h3 class="font-bold text-base text-blue-400"> Registo de Auditoria Financeira</h3>
+                </div>
+              </div>
+
+              <div class="card table-scroll-box shadow-xl overflow-x-auto">
+                <table class="w-full text-xs sm:text-sm min-w-[650px]">
+                  <thead>
+                    <tr class="text-left text-[var(--text-dim)] text-[10px] sm:text-xs uppercase tracking-wide border-b border-[var(--border-color)] bg-[var(--bg-card-2)]">
+                      <th class="p-3">Data / Hora</th>
+                      <th class="p-3">Responsável</th>
+                      <th class="p-3">Operação</th>
+                      <th class="p-3">Detalhes Registados</th>
+                      <th class="p-3 font-mono text-right">Valor Afetado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="a in getAudits()" :key="a.id">
+                      <tr class="align-middle border-b border-[var(--border-color)]/40 hover:bg-[var(--surface-hover)]">
+                        <td class="p-3 font-mono text-xs" x-text="a.date + ' ' + a.time"></td>
+                        <td class="p-3 font-semibold" x-text="a.userName + ' (' + a.userRole + ')'"></td>
+                        <td class="p-3 font-bold text-emerald-400" x-text="a.action"></td>
+                        <td class="p-3 text-[var(--text-muted)]" x-text="a.details"></td>
+                        <td class="p-3 font-mono font-bold text-right text-[var(--accent-gold)]" x-text="a.amount ? fmtMT(a.amount) : '—'"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </template>
+
+
+<template x-if="view==='clientes'">
+          <div class="space-y-4">
+            
+            <div class="card p-4 space-y-3">
+              <p class="label text-[var(--primary-light)]"> Cadastrar Novo Cliente</p>
+              <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                <input type="text" class="input text-xs" placeholder="Nome do cliente" x-model="newClientName">
+                <input type="text" class="input text-xs" placeholder="Telemóvel (+258)" x-model="newClientPhone">
+                <input type="text" class="input text-xs" placeholder="Endereço / Local" x-model="newClientAddress">
+                <button type="button" class="btn btn-primary text-xs font-bold" @click="addClient()">Adicionar Cliente</button>
+              </div>
+            </div>
+
+            <div class="card p-4 space-y-3">
+              <p class="label">Lista de Clientes & Contas Correntes</p>
+              <div class="space-y-2.5">
+                <template x-for="c in clients" :key="c.id">
+                  <div class="card-2 p-3.5 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p class="font-bold text-sm" x-text="c.name"></p>
+                      <p class="text-xs text-[var(--text-dim)]" x-text="(c.phone || 'Sem telemóvel') + ' · ' + (c.address || 'Local não indicado')"></p>
+                      <p class="text-xs font-mono mt-1">
+                        Total Comprado: <b><span x-text="fmtMT(c.totalBought)"></span></b> · 
+                        Dívida: <b class="text-red-400"><span x-text="fmtMT(c.debt)"></span></b>
+                      </p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                      <button type="button" class="action-btn whatsapp" @click="sendWhatsAppBilling(c)" title="Cobrar por WhatsApp">
+                        <span x-html="getIcon('whatsapp')"></span> Cobrar WhatsApp
+                      </button>
+                      <button type="button" x-show="c.debt > 0" class="action-btn" @click="openPaymentModalForClient(c)">
+                        <span x-html="getIcon('arrowDown')"></span>
+                        <span>Registar Pagamento</span>
+                      </button>
+                    </div>
+                  </div>
+                </template>
+                <p x-show="clients.length===0" class="text-xs text-[var(--text-dim)] p-4 text-center">Nenhum cliente registado.</p>
+              </div>
+            </div>
+
+          </div>
+        </template>
+
+<template x-if="view==='equipa'">
+          <div class="space-y-4">
+            <div class="card p-4 border border-[var(--primary)]/40 bg-[var(--bg-card)]">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-[var(--primary)]/15 border border-[var(--primary)]/30 flex items-center justify-center text-[var(--primary-light)]"><span class="inline-flex" x-html="getIcon('user')"></span></div>
+                  <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <p class="font-bold text-sm sm:text-base" x-text="currentUser ? currentUser.nome : ''"></p>
+                      <span class="badge text-[10px]" :class="userRoleBadge(currentUser ? currentUser.roleType : '').class" x-text="userRoleBadge(currentUser ? currentUser.roleType : '').label"></span>
+                    </div>
+                    <p class="text-xs text-[var(--text-dim)]" x-text="currentUser ? ((currentUser.username ? '@' + currentUser.username : '') + (currentUser.telefone ? ' · ' + currentUser.telefone : '')) : ''"></p>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm text-xs font-bold" @click="openProfile()"><span x-html="getIcon('edit')"></span> Editar meu perfil</button>
+              </div>
+            </div>
+
+            <div x-show="isAdmin()" x-cloak class="card p-4 space-y-3">
+              <div class="flex items-center justify-between gap-3">
+                <div><p class="label text-[var(--primary-light)]">Contas dos colaboradores</p><p class="text-[10px] text-[var(--text-dim)]">Crie contas individuais para cada colaborador. No fim, o sistema apresenta os dados de acesso prontos para partilhar.</p></div>
+                <span class="badge badge-normal text-[10px]" x-text="isSuperAdmin() ? 'Super Admin' : 'Administrador'"></span>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2.5">
+                <div><label class="label block mb-1">Nome completo</label><input type="text" class="input text-xs" placeholder="Nome completo" x-model="newStaffName"></div>
+                <div><label class="label block mb-1">Telemóvel <span class="text-[var(--text-dim)]">(opcional)</span></label><input type="tel" class="input text-xs" placeholder="Contacto telefónico" x-model="newStaffPhone"></div>
+                <div><label class="label block mb-1">E-mail <span class="text-[var(--text-dim)]">(obrigatório)</span></label><input type="email" class="input text-xs" placeholder="nome@empresa.com" x-model="newStaffEmail" autocomplete="email" required></div>
+                <div><label class="label block mb-1">Função</label><select class="input text-xs" x-model="newStaffRoleType"><option value="employee">Funcionário</option><option value="seller">Vendedor / Caixa</option><option value="admin" x-show="isSuperAdmin()">Administrador</option></select></div>
+                <div><label class="label block mb-1">Salário mensal <span class="text-[var(--text-dim)]">(opcional)</span></label><input type="number" min="0" step="0.01" class="input text-xs" placeholder="0,00 MT" x-model="newStaffSalary"></div>
+              </div>
+              <div class="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
+                <div class="text-xs text-[var(--text-dim)]"><p><strong class="text-[var(--text)]">Acesso profissional:</strong> entra com <strong>e-mail + palavra-passe</strong>.</p><p>O e-mail identifica a conta e a palavra-passe inicial é criada pelo sistema e apresentada no fim para partilhar com a pessoa.</p></div>
+                <button type="button" class="btn btn-primary text-xs font-bold" @click="addStaff()" :disabled="operationBusy">
+                  <span x-show="!operationBusy" x-html="getIcon('userPlus')"></span>
+                  <span x-text="operationBusy ? 'A criar…' : 'Criar conta do colaborador'"></span>
+                </button>
+              </div>
+              <div x-show="operationBusy" x-cloak class="flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs" role="status" aria-live="polite">
+                <span class="inline-block w-4 h-4 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin"></span>
+                <div><p class="font-semibold text-emerald-400" x-text="operationLabel || 'A processar…'"></p><p class="text-[10px] text-[var(--text-dim)]" x-text="operationStep ? 'Etapa ' + operationStep : 'Aguarde…'"></p></div>
+              </div>
+              <div x-show="lastGeneratedAccess" x-cloak class="rounded-lg border border-[var(--primary)]/30 bg-[var(--primary)]/5 p-3 space-y-2">
+                <div class="flex items-center justify-between gap-2"><p class="font-semibold text-xs">Acesso criado — dados do primeiro acesso</p><button type="button" class="btn btn-ghost btn-sm" @click="lastGeneratedAccess=null; sharingUser=null"><span x-html="getIcon('x')"></span></button></div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"><div class="rounded-lg bg-[var(--surface)] p-2"><p class="text-[10px] text-[var(--text-dim)]">E-mail de acesso</p><p class="font-bold text-sm break-all" x-text="lastGeneratedAccess ? (lastGeneratedAccess.email || lastGeneratedAccess.authEmail || '') : ''"></p></div><div class="rounded-lg bg-[var(--surface)] p-2"><p class="text-[10px] text-[var(--text-dim)]">Palavra-passe inicial</p><p class="font-mono font-bold text-sm break-all" x-text="lastGeneratedAccess ? lastGeneratedAccess.credential : ''"></p></div><div class="rounded-lg bg-[var(--surface)] p-2"><p class="text-[10px] text-[var(--text-dim)]">Função</p><p class="font-bold text-sm" x-text="lastGeneratedAccess ? roleDisplayName(lastGeneratedAccess.roleType) : ''"></p></div></div>
+                <p class="text-[10px] text-[var(--text-dim)]">Estes são os dados de acesso da conta: <strong>e-mail + palavra-passe</strong>.</p>
+                <button type="button" class="btn btn-primary btn-sm text-xs" @click="shareCredentials({nome:lastGeneratedAccess.nome, name:lastGeneratedAccess.nome, email:lastGeneratedAccess.email || lastGeneratedAccess.authEmail, authEmail:lastGeneratedAccess.authEmail || lastGeneratedAccess.email, credentialType:'password', password:lastGeneratedAccess.credential})"><span x-html="getIcon('share')"></span> Partilhar acesso</button>
+              </div>
+            </div>
+
+            <div x-show="!isAdmin()" class="card p-4 space-y-4">
+              <div><p class="label">Meu ponto</p><p class="text-xs text-[var(--text-dim)]">Registe apenas a sua própria presença. Os colegas não são apresentados neste perfil.</p></div>
+              <div class="card-2 p-4 flex flex-wrap items-center justify-between gap-3"><div><p class="font-bold text-sm" x-text="currentUser ? currentUser.nome : ''"></p><p class="text-xs text-[var(--text-dim)]" x-text="todayStr()"></p></div><button type="button" class="btn btn-primary btn-sm font-bold" @click="logAttendance(currentUser, 'presente')"><span x-html="getIcon('check')"></span> Registar presença</button></div>
+            </div>
+
+            <div class="card p-4 space-y-3">
+              <div class="flex items-center justify-between gap-2"><p class="label">Equipa do Aviário</p><span class="text-[10px] text-[var(--text-dim)]" x-text="isAdmin() ? 'Gestão e presença' : 'O meu perfil e presença'"></span></div>
+              <div class="space-y-2.5"><template x-for="stf in getVisibleTeamMembers()" :key="stf.id"><div class="card-2 p-3.5 flex flex-wrap items-center justify-between gap-3"><div><div class="flex flex-wrap items-center gap-2"><p class="font-bold text-sm" x-text="stf.name || stf.nome"></p><span class="badge text-[9px]" :class="userRoleBadge(stf.roleType).class" x-text="userRoleBadge(stf.roleType).label"></span></div><p class="text-xs text-[var(--text-dim)]" x-text="(stf.email ? ' · ' + stf.email : '') + (stf.telefone ? ' · ' + stf.telefone : '') + (isAdmin() && stf.salary ? ' · Salário: ' + fmtMT(stf.salary) : '')"></p></div><div class="flex flex-wrap items-center gap-2"><button type="button" class="action-btn" x-show="isAdmin() && (isSuperAdmin() || (hasRole('admin') && stf.roleType !== 'admin' && stf.roleType !== 'super_admin'))" @click="editStaffAccess(stf)" title="Gerir conta"><span x-html="getIcon('edit')"></span></button><button type="button" class="action-btn" x-show="isAdmin() && lastGeneratedAccess && ((lastGeneratedAccess.uid && lastGeneratedAccess.uid === stf.uid) || (lastGeneratedAccess.email && lastGeneratedAccess.email === stf.email))" @click="showFirstAccess(stf)" title="Ver primeiro acesso"><span x-html="getIcon('eye')"></span></button><button type="button" class="action-btn" x-show="isAdmin()" @click="shareCredentials(stf)" title="Partilhar acesso"><span x-html="getIcon('share')"></span></button><button type="button" class="action-btn" @click="logAttendance(currentUser && ((currentUser._authUid || currentUser.uid) === (stf._authUid || stf.uid)) ? currentUser : stf, 'presente')" title="Registar presença"><span x-html="getIcon('check')"></span></button><button type="button" class="action-btn" x-show="isAdmin()" @click="openSalaryPayment(stf)" title="Registar pagamento"><span x-html="getIcon('caixa')"></span></button></div></div></template><p x-show="getVisibleTeamMembers().length===0" class="text-xs text-[var(--text-dim)] p-4 text-center">Nenhum registo de equipa disponível.</p></div>
+              <p x-show="!isAdmin()" class="text-[10px] text-[var(--text-dim)]">Os restantes colaboradores permanecem privados. Pode editar os seus próprios dados e palavra-passe em <strong>Editar meu perfil</strong>.</p>
+            </div>
+          </div>
+        </template>
+
+<template x-teleport="body">
+<div x-show="showSalaryPaymentModal" x-cloak class="app-modal" @keydown.escape.window="closeSalaryPayment()" x-transition.opacity role="dialog" aria-modal="true">
+          <div class="app-modal-card modal-md p-5 space-y-4" @click.stop>
+            <div class="flex items-center justify-between">
+              <div><h3 class="font-bold">Registar pagamento</h3><p class="text-xs text-[var(--text-dim)]" x-text="salaryPaymentStaff ? (salaryPaymentStaff.name || salaryPaymentStaff.nome) : ''"></p></div>
+              <button type="button" class="btn btn-ghost btn-sm" @click="closeSalaryPayment()"><span x-html="getIcon('x')"></span></button>
+            </div>
+            <div class="grid gap-3">
+              <div><label class="label block mb-1">Valor</label><input type="number" min="0" step="0.01" class="input w-full" x-model="salaryPaymentAmount" placeholder="0,00 MT"></div>
+              <div><label class="label block mb-1">Descrição</label><input type="text" class="input w-full" x-model="salaryPaymentDescription" placeholder="Pagamento de salário"></div>
+              <div><label class="label block mb-1">Forma de pagamento</label><select class="input w-full" x-model="salaryPaymentMethod"><option>Caixa / Numerário</option><option>M-Pesa</option><option>e-Mola</option><option>Transferência bancária</option></select></div>
+            </div>
+            <div class="flex justify-end gap-2"><button type="button" class="btn btn-ghost" @click="closeSalaryPayment()">Cancelar</button><button type="button" class="btn btn-primary" @click="confirmSalaryPayment()">Confirmar pagamento</button></div>
+          </div>
+        </div>
+</template>
+
+        <template x-if="view==='despesas'">
+          <div class="space-y-4">
+            
+            <div class="card p-4 space-y-3 border-l-4 border-l-amber-500">
+              <p class="label text-[var(--accent-gold)]"> Leitura do Contador de Energia Elétrica (EDM)</p>
+              <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                <div>
+                  <label class="label block mb-1">Leitura Anterior (kWh)</label>
+                  <input type="number" class="input text-xs font-mono" placeholder="Ex: 1040" x-model="newEnergyPrev">
+                </div>
+                <div>
+                  <label class="label block mb-1">Leitura Atual (kWh)</label>
+                  <input type="number" class="input text-xs font-mono" placeholder="Ex: 1180" x-model="newEnergyCurr">
+                </div>
+                <div>
+                  <label class="label block mb-1">Preço por kWh (MT)</label>
+                  <input type="number" step="0.1" class="input text-xs font-mono" x-model="newEnergyPriceKwh">
+                </div>
+                <div class="flex items-end">
+                  <button type="button" class="btn btn-gold w-full text-xs font-bold h-[38px]" @click="addEnergyLog()">
+                    Calcular & Lançar Fatura
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-4 space-y-3">
+              <p class="label text-[var(--primary-light)]"> Lançar Despesa Geral (Água, Vacinas, Manutenção, etc.)</p>
+              <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                <select class="input text-xs" x-model="newExpCategory">
+                  <option value="Medicamentos">Medicamentos & Vitaminas</option>
+                  <option value="Vacinas">Vacinas</option>
+                  <option value="Água">Água & Bombeamento</option>
+                  <option value="Transporte">Transporte / Combustível</option>
+                  <option value="Maravalha / Cama">Maravalha / Cama do Aviário</option>
+                  <option value="Manutenção">Manutenção de Instalações</option>
+                  <option value="Outros">Outras Despesas</option>
+                </select>
+                <input type="text" class="input text-xs" placeholder="Descrição do gasto" x-model="newExpDesc">
+                <input type="number" min="0" class="input text-xs font-mono" placeholder="Valor MT" x-model="newExpAmount">
+                <button type="button" class="btn btn-primary text-xs font-bold" @click="addExpense()">Lançar Despesa</button>
+              </div>
+            </div>
+
+            <div class="card p-4 space-y-3">
+              <p class="label">Histórico de Despesas Operacionais</p>
+              <div class="space-y-2">
+                <template x-for="e in expenses" :key="e.id">
+                  <div class="card-2 p-3 flex items-center justify-between">
+                    <div>
+                      <p class="font-bold text-xs sm:text-sm" x-text="e.category + ' — ' + e.description"></p>
+                      <p class="text-[11px] text-[var(--text-dim)]" x-text="e.date + ' · ' + e.loteCode"></p>
+                    </div>
+                    <p class="font-mono font-bold text-sm text-red-400" x-text="'- ' + fmtMT(e.amount)"></p>
+                  </div>
+                </template>
+                <p x-show="expenses.length===0" class="text-xs text-[var(--text-dim)] p-4 text-center">Nenhuma despesa registada.</p>
+              </div>
+            </div>
+
+          </div>
+        </template>
+
+<template x-if="view==='stock'">
+          <div class="space-y-5">
+            
+            <!-- Top Header de Stock -->

@@ -1,0 +1,493 @@
+            <div class="card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 border-l-[var(--primary)]">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span x-html="getIcon('stock')"></span>
+                  <h2 class="text-xl font-bold font-serif text-[var(--text-main)]">Inventário & Stock</h2>
+                </div>
+                <p class="text-xs text-[var(--text-dim)] mt-0.5">Gestão física de rações, medicamentos, vacinas, desinfetantes e equipamentos</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" class="action-btn !bg-[var(--primary)] !text-slate-950 font-bold text-xs" @click="stockSubTab='produtos'">
+                  <span x-html="getIcon('plus')"></span> <span>Adicionar Produto</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Abas Internas de Inventário & Stock -->
+            <div class="flex flex-wrap items-center gap-1.5 bg-[var(--bg-card)] p-1.5 rounded-xl border border-[var(--border-color)]">
+              <button type="button" class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all" :class="stockSubTab==='produtos' ? 'bg-[var(--primary)] text-slate-950 shadow' : 'text-[var(--text-dim)] hover:text-white'" @click="stockSubTab='produtos'">
+                 Produtos & Insumos
+              </button>
+              <button type="button" class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all" :class="stockSubTab==='stock' ? 'bg-[var(--primary)] text-slate-950 shadow' : 'text-[var(--text-dim)] hover:text-white'" @click="stockSubTab='stock'">
+                 Stock Atual
+              </button>
+              <button type="button" class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all" :class="stockSubTab==='entradas' ? 'bg-[var(--primary)] text-slate-950 shadow' : 'text-[var(--text-dim)] hover:text-white'" @click="stockSubTab='entradas'">
+                 Entradas / Compras
+              </button>
+              <button type="button" class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all" :class="stockSubTab==='saidas' ? 'bg-[var(--primary)] text-slate-950 shadow' : 'text-[var(--text-dim)] hover:text-white'" @click="stockSubTab='saidas'">
+                 Saídas / Consumo
+              </button>
+              <button type="button" class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all" :class="stockSubTab==='fornecedores' ? 'bg-[var(--primary)] text-slate-950 shadow' : 'text-[var(--text-dim)] hover:text-white'" @click="stockSubTab='fornecedores'">
+                 Fornecedores
+              </button>
+              <button type="button" class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all" :class="stockSubTab==='alertas' ? 'bg-[var(--primary)] text-slate-950 shadow' : 'text-[var(--text-dim)] hover:text-white'" @click="stockSubTab='alertas'">
+                 Alertas de Reposição
+              </button>
+            </div>
+
+            <!-- Conteúdo da Sub-aba: Produtos & Insumos -->
+            <div x-show="stockSubTab==='produtos'" class="space-y-4">
+              <div class="card p-4 space-y-3">
+                <p class="label text-[var(--primary-light)]"> Cadastrar Novo Insumo / Produto</p>
+                <div class="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+                  <input type="text" class="input text-xs" placeholder="Nome do produto (Ex: Ração A1)" x-model="newStockName">
+                  <select class="input text-xs" x-model="newStockCategory">
+                    <option value="Ração">Ração</option>
+                    <option value="Medicamentos">Medicamentos</option>
+                    <option value="Vacinas">Vacinas</option>
+                    <option value="Desinfetantes">Desinfetantes</option>
+                    <option value="Limpeza">Limpeza</option>
+                    <option value="Ferramentas">Ferramentas</option>
+                    <option value="Material Elétrico">Material Elétrico</option>
+                    <option value="Outros">Outros</option>
+                  </select>
+                  <input type="number" min="0" class="input text-xs font-mono" placeholder="Quantidade" x-model="newStockQty">
+                  <select class="input text-xs" x-model="newStockUnit">
+                    <option value="sacos">sacos (50kg)</option>
+                    <option value="kg">kg</option>
+                    <option value="frascos">frascos</option>
+                    <option value="doses">doses</option>
+                    <option value="un">unidades</option>
+                  </select>
+                  <button type="button" class="btn btn-primary btn-sm text-xs font-bold" @click="addStockItem()">
+                    Salvar Insumo
+                  </button>
+                </div>
+              </div>
+
+              <!-- Lista de Insumos -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <template x-for="item in stockItems" :key="item.id">
+                  <div class="card p-4 space-y-2 border-l-2" :class="item.qty <= item.minStock ? 'border-l-red-500' : 'border-l-[var(--primary)]'">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--text-dim)]" x-text="item.category"></span>
+                      <span class="badge text-[10px]" :class="item.qty <= item.minStock ? 'badge-danger' : 'badge-success'" x-text="item.qty <= item.minStock ? 'Crítico' : 'Normal'"></span>
+                    </div>
+                    <p class="font-bold text-sm text-[var(--text-main)]" x-text="item.name"></p>
+                    <p class="text-xl font-mono font-extrabold text-[var(--primary-light)]" x-text="item.qty + ' ' + item.unit"></p>
+                    <div class="flex justify-between text-[11px] text-[var(--text-dim)] pt-2 border-t border-[var(--border-color)]">
+                      <span>Mínimo: <strong x-text="item.minStock + ' ' + item.unit"></strong></span>
+                      <span>Preço: <strong x-text="fmtMT(item.unitPrice)"></strong></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Conteúdo da Sub-aba: Stock Atual -->
+            <div x-show="stockSubTab==='stock'" class="card p-4 space-y-4">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr class="border-b border-[var(--border-color)] text-[var(--text-dim)] uppercase text-[10px] tracking-wider">
+                      <th class="py-2.5 px-3">Insumo / Produto</th>
+                      <th class="py-2.5 px-3">Categoria</th>
+                      <th class="py-2.5 px-3">Qtd Atual</th>
+                      <th class="py-2.5 px-3">Stock Mínimo</th>
+                      <th class="py-2.5 px-3">Preço Unitário</th>
+                      <th class="py-2.5 px-3">Valor Total</th>
+                      <th class="py-2.5 px-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-[var(--border-color)] font-sans">
+                    <template x-for="item in stockItems" :key="item.id">
+                      <tr class="hover:bg-[var(--bg-card-2)] transition-colors">
+                        <td class="py-3 px-3 font-bold" x-text="item.name"></td>
+                        <td class="py-3 px-3 text-[var(--text-dim)]" x-text="item.category"></td>
+                        <td class="py-3 px-3 font-mono font-bold text-base text-[var(--primary)]" x-text="item.qty + ' ' + item.unit"></td>
+                        <td class="py-3 px-3 font-mono" x-text="item.minStock + ' ' + item.unit"></td>
+                        <td class="py-3 px-3 font-mono" x-text="fmtMT(item.unitPrice)"></td>
+                        <td class="py-3 px-3 font-mono font-bold text-emerald-400" x-text="fmtMT(item.qty * item.unitPrice)"></td>
+                        <td class="py-3 px-3">
+                          <span class="px-2 py-0.5 text-[10px] rounded-full font-bold" :class="item.qty <= item.minStock ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'" x-text="item.qty <= item.minStock ? 'Repor Urgente' : 'Abastecido'"></span>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Conteúdo da Sub-aba: Entradas / Compras -->
+            <div x-show="stockSubTab==='entradas'" class="card p-4 space-y-3">
+              <h3 class="text-sm font-bold font-serif text-[var(--text-main)]"> Histórico de Entradas e Compras de Armazém</h3>
+              <div class="space-y-2">
+                <template x-for="f in feedLogs.filter(item=>item.movement==='COMPRA')" :key="f.id">
+                  <div class="card-2 p-3 flex items-center justify-between">
+                    <div>
+                      <p class="font-bold text-xs" x-text="f.type + ' (' + f.qtyKg + ' kg)'"></p>
+                      <p class="text-[11px] text-[var(--text-dim)]" x-text="'Fornecedor: ' + (f.supplier || 'AgroFeed') + ' · Data: ' + f.date"></p>
+                    </div>
+                    <p class="font-mono font-bold text-emerald-400 text-sm" x-text="fmtMT(f.totalCost)"></p>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Conteúdo da Sub-aba: Saídas / Consumo -->
+            <div x-show="stockSubTab==='saidas'" class="card p-4 space-y-3">
+              <h3 class="text-sm font-bold font-serif text-[var(--text-main)]"> Histórico de Saídas e Consumo de Insumos</h3>
+              <div class="space-y-2">
+                <template x-for="f in feedLogs.filter(item=>item.movement==='CONSUMO')" :key="f.id">
+                  <div class="card-2 p-3 flex items-center justify-between">
+                    <div>
+                      <p class="font-bold text-xs" x-text="f.type + ' (' + f.qtyKg + ' kg)'"></p>
+                      <p class="text-[11px] text-[var(--text-dim)]" x-text="'Destino: ' + (f.loteCode || 'Geral') + ' · Data: ' + f.date"></p>
+                    </div>
+                    <span class="badge badge-success text-xs">Consumido</span>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Conteúdo da Sub-aba: Fornecedores -->
+            <div x-show="stockSubTab==='fornecedores'" class="card p-4 space-y-4">
+              <h3 class="text-sm font-bold font-serif text-[var(--text-main)]"> Fornecedores Parceiros de Insumos</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <template x-for="sup in suppliers" :key="sup.id">
+                  <div class="card-2 p-3 space-y-1">
+                    <p class="font-bold text-sm text-[var(--accent-gold)]" x-text="sup.name"></p>
+                    <p class="text-xs text-[var(--text-dim)]" x-text="sup.category"></p>
+                    <p class="text-xs text-[var(--text-dim)]" x-text="sup.location"></p>
+                    <p class="text-xs font-mono text-[var(--text-main)]" x-text="sup.phone"></p>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Conteúdo da Sub-aba: Alertas -->
+            <div x-show="stockSubTab==='alertas'" class="card p-4 space-y-3">
+              <h3 class="text-sm font-bold font-serif text-amber-400"> Alertas de Reposição Imediata</h3>
+              <div class="space-y-2">
+                <template x-for="item in stockItems.filter(i=>i.qty <= i.minStock)" :key="item.id">
+                  <div class="card-2 p-3 flex items-center justify-between border-l-4 border-l-red-500 bg-red-500/10">
+                    <div>
+                      <p class="font-bold text-xs text-red-300" x-text="'Stock Crítico: ' + item.name"></p>
+                      <p class="text-[11px] text-[var(--text-dim)]" x-text="'Restam apenas ' + item.qty + ' ' + item.unit + ' (Mínimo recomendado: ' + item.minStock + ')'"></p>
+                    </div>
+                    <button type="button" class="btn btn-xs !bg-red-600 !text-white font-bold" @click="openModalSaida()">
+                      Comprar Agora
+                    </button>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+          </div>
+        </template>
+
+<template x-if="view==='planilha'">
+          <div class="space-y-4">
+            
+            <div class="card p-6 text-center space-y-4 bg-gradient-to-b from-[var(--bg-card)] to-[var(--bg-card-2)]">
+              <div class="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center border border-emerald-500/40">
+                <span x-html="getIcon('excel')"></span>
+              </div>
+              <div>
+                <h2 class="text-lg sm:text-xl font-bold text-[var(--primary-light)]">Planilha Inteligente Multi-Abas (.xlsx)</h2>
+                <p class="text-xs text-[var(--text-muted)] max-w-lg mx-auto mt-1 leading-relaxed">
+                  Exporte os dados atualmente registados no sistema para um ficheiro Excel consolidado. O ficheiro é gerado no momento do pedido com os dados disponíveis na sua conta.
+                </p>
+              </div>
+
+              <div class="flex flex-wrap justify-center gap-3 pt-2">
+                <button type="button" class="btn btn-primary font-bold text-sm px-6 py-2.5 shadow-xl" @click="exportExcel()">
+                  <span x-html="getIcon('excel')"></span> Descarregar Planilha Excel Completa (.xlsx)
+                </button>
+                <button type="button" class="btn btn-ghost font-bold text-sm px-5 py-2.5" @click="exportPDF()">
+                  <span x-html="getIcon('pdf')"></span> Descarregar PDF
+                </button>
+
+
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-left pt-2">
+                <div class="card-2 p-2.5"><p class="text-[10px] text-[var(--text-dim)]">Lotes</p><p class="font-bold text-sm" x-text="(lotes||[]).length"></p></div>
+                <div class="card-2 p-2.5"><p class="text-[10px] text-[var(--text-dim)]">Vendas</p><p class="font-bold text-sm" x-text="(sales||[]).length"></p></div>
+                <div class="card-2 p-2.5"><p class="text-[10px] text-[var(--text-dim)]">Clientes</p><p class="font-bold text-sm" x-text="(clients||[]).length"></p></div>
+                <div class="card-2 p-2.5"><p class="text-[10px] text-[var(--text-dim)]">Stock</p><p class="font-bold text-sm" x-text="(stockItems||[]).length"></p></div>
+              </div>
+            </div>
+
+          </div>
+        </template>
+
+<template x-if="view==='relatorios'">
+          <div class="space-y-4">
+            
+            <div class="flex justify-between items-center">
+              <p class="font-bold text-sm text-[var(--primary-light)]">Relatório Executivo Consolidado</p>
+              <div class="flex gap-2">
+                <button type="button" class="btn btn-ghost btn-sm text-xs font-bold" @click="exportExcel()">
+                  <span x-html="getIcon('excel')"></span> Excel
+                </button>
+                <button type="button" class="btn btn-primary btn-sm text-xs font-bold" @click="exportPDF()">
+                  <span x-html="getIcon('pdf')"></span> Gerar PDF
+                </button>
+              </div>
+            </div>
+
+            <!-- Área de Impressão do Relatório -->
+            <div id="report-print-area" class="card p-6 space-y-6 bg-white text-slate-900">
+              <div class="flex justify-between items-end border-b-2 border-emerald-600 pb-3 gap-4">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div><img :src="settings.companyLogo || './assets/icon-192.png'" alt="Logotipo" class="w-16 h-16 object-contain rounded-lg border border-slate-200 p-1 bg-white"></div>
+                  <div>
+                    <h1 class="text-xl font-bold text-emerald-800" x-text="settings.companyLegalName || settings.farmName || 'Aviário Inteligente Pro'"></h1>
+                    <p class="text-xs text-slate-600" x-text="settings.companySubtitle || settings.tagline || 'Sistema Integrado de Gestão Avícola & Produção'"></p>
+                    <p class="text-[10px] text-slate-500" x-text="[settings.companyAddress, settings.phone, settings.companyEmail].filter(Boolean).join(' · ')"></p>
+                  </div>
+                </div>
+                <div class="text-right text-xs text-slate-500">
+                  <p>Emitido em: <b x-text="todayStr()"></b></p>
+                  <p>Responsável: <b x-text="currentUser ? currentUser.nome : 'Administrador'"></b></p>
+                </div>
+              </div>
+
+              <!-- Resumo do Lote Atual -->
+              <div class="space-y-2">
+                <h3 class="font-bold text-sm text-emerald-900 uppercase">1. Desempenho do Lote Atual</h3>
+                <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                  <div class="p-2 border rounded bg-slate-50"><p class="text-slate-500">Lote</p><b x-text="getActiveLote() ? getActiveLote().code : '—'"></b></div>
+                  <div class="p-2 border rounded bg-slate-50"><p class="text-slate-500">Frangos Vivos</p><b x-text="getSummaryKPIs().remainingBirds"></b></div>
+                  <div class="p-2 border rounded bg-slate-50"><p class="text-slate-500">Mortalidade</p><b class="text-red-600" x-text="getSummaryKPIs().mortalityRate + '%'"></b></div>
+                  <div class="p-2 border rounded bg-slate-50"><p class="text-slate-500">FCR (Conversão)</p><b class="text-emerald-700" x-text="getSummaryKPIs().fcr"></b></div>
+                </div>
+              </div>
+
+              <!-- Resumo Financeiro -->
+              <div class="space-y-2">
+                <h3 class="font-bold text-sm text-emerald-900 uppercase">2. Resumo Financeiro & Caixa</h3>
+                <table class="w-full text-xs border-collapse">
+                  <tbody>
+                    <tr class="border-b"><td class="py-1.5 font-medium">Receita Total de Vendas</td><td class="py-1.5 text-right font-mono font-bold text-emerald-700" x-text="fmtMT(getSummaryKPIs().totalRevenue)"></td></tr>
+                    <tr class="border-b"><td class="py-1.5 font-medium">Despesas Totais de Produção</td><td class="py-1.5 text-right font-mono font-bold text-red-600" x-text="fmtMT(getSummaryKPIs().totalExpenses)"></td></tr>
+                    <tr class="border-b bg-emerald-50"><td class="py-1.5 font-bold text-emerald-900">Lucro Líquido Real</td><td class="py-1.5 text-right font-mono font-bold text-emerald-900" x-text="fmtMT(getSummaryKPIs().netProfit)"></td></tr>
+                    <tr class="border-b"><td class="py-1.5 font-medium">Saldo Atual em Caixa</td><td class="py-1.5 text-right font-mono font-bold" x-text="fmtMT(getSummaryKPIs().cashBalance)"></td></tr>
+                    <tr><td class="py-1.5 font-medium">Contas a Receber (Dívidas)</td><td class="py-1.5 text-right font-mono font-bold text-amber-700" x-text="fmtMT(getSummaryKPIs().accountsReceivable)"></td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div x-show="!lotes.length && !sales.length && !expenses.length" class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-xs text-slate-600">
+                Ainda não existem registos operacionais suficientes para preencher este relatório. Os valores apresentados como zero/traço representam dados ainda não registados.
+              </div>
+
+              <div class="pt-3 border-t border-slate-200 text-[10px] text-slate-500 flex items-end justify-between gap-5">
+                <div><p class="font-semibold" x-text="settings.reportFooter || 'Relatório emitido automaticamente pelo sistema.'"></p></div>
+                <div x-show="settings.signatureName || settings.signatureImage" class="text-center min-w-[180px]">
+                  <template x-if="settings.signatureImage"><img :src="settings.signatureImage" alt="Assinatura" class="h-12 max-w-[180px] object-contain mx-auto"></template>
+                  <template x-if="!settings.signatureImage"><div class="border-b border-slate-300 h-7"></div></template>
+                  <p class="font-semibold mt-1" x-text="settings.signatureName"></p><p x-text="settings.signatureTitle"></p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </template>
+
+<template x-if="view==='configuracoes'">
+          <div class="space-y-4 max-w-xl">
+            
+            <div class="card p-5 space-y-4">
+              <p class="font-bold text-sm text-[var(--primary-light)]">Definições do Aviário & Metas Técnicas</p>
+              
+              <div class="card-2 p-4 space-y-3 border border-[var(--primary)]/20">
+                <div class="flex items-start justify-between gap-3">
+                  <div><p class="font-bold text-sm">Perfil e Identidade da Empresa</p><p class="text-xs text-[var(--text-dim)]">Estas informações aparecem automaticamente no site, nas facturas e nos relatórios.</p></div>
+                  <div class="shrink-0"><img :src="settings.companyLogo || './assets/icon-192.png'" alt="Logotipo da empresa" class="w-14 h-14 rounded-xl object-contain border border-[var(--border)] bg-white p-1"></div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div class="sm:col-span-2"><label class="label block mb-1">Nome legal / nome da empresa</label><input type="text" class="input text-xs sm:text-sm" x-model="settings.companyLegalName" placeholder="Ex.: Calton Frango, Lda."></div>
+                  <div class="sm:col-span-2"><label class="label block mb-1">Subtítulo / actividade</label><input type="text" class="input text-xs sm:text-sm" x-model="settings.companySubtitle" placeholder="Ex.: Produção e comercialização de frangos"></div>
+                  <div><label class="label block mb-1">Telefone</label><input type="text" class="input text-xs" x-model="settings.phone" placeholder="+258 ..."></div>
+                  <div><label class="label block mb-1">E-mail</label><input type="email" class="input text-xs" x-model="settings.companyEmail" placeholder="empresa@exemplo.com"></div>
+                  <div class="sm:col-span-2"><label class="label block mb-1">Morada / localização</label><input type="text" class="input text-xs" x-model="settings.companyAddress" placeholder="Endereço da empresa"></div>
+                  <div class="sm:col-span-2"><label class="label block mb-1">Assinatura nos relatórios</label><div class="grid grid-cols-1 sm:grid-cols-2 gap-2"><input type="text" class="input text-xs" x-model="settings.signatureName" placeholder="Nome do responsável"><input type="text" class="input text-xs" x-model="settings.signatureTitle" placeholder="Cargo / função"></div><div class="flex flex-wrap items-center gap-2 mt-2"><label class="btn btn-ghost btn-sm text-xs font-bold cursor-pointer"><span x-html="getIcon('upload')"></span> Carregar assinatura<input type="file" accept="image/png,image/jpeg,image/webp" class="hidden" @change="handleCompanySignature($event)"></label><button x-show="settings.signatureImage" type="button" class="btn btn-ghost btn-sm text-xs text-red-400" @click="removeCompanySignature()"><span x-html="getIcon('trash')"></span> Remover assinatura</button><span class="text-[10px] text-[var(--text-dim)]">PNG/JPG, até 1 MB</span></div></div>
+                  <div>
+                    <label class="label block mb-1">Logotipo da empresa</label>
+                    <div class="flex items-center gap-3">
+                      <div class="w-11 h-11 shrink-0 rounded-xl border border-[var(--border)] bg-white p-1 flex items-center justify-center overflow-hidden">
+                        <img :src="settings.companyLogo || './assets/icon-192.png'" alt="Logotipo da empresa" class="max-w-full max-h-full object-contain">
+                      </div>
+                      <div class="min-w-0"><p class="text-xs font-semibold">Identidade usada nos documentos</p><p class="text-[10px] text-[var(--text-dim)]">A mesma logo será usada no cabeçalho do site, relatórios e facturas.</p></div>
+                    </div>
+                  </div>
+                  <div><label class="label block mb-1">Nota de rodapé</label><input type="text" class="input text-xs" x-model="settings.reportFooter" placeholder="Ex.: Documento emitido pelo sistema de gestão da empresa."></div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <label class="btn btn-ghost btn-sm text-xs font-bold cursor-pointer"><span x-html="getIcon('upload')"></span> Adicionar logotipo<input type="file" accept="image/*" class="hidden" @change="handleCompanyLogo($event)"></label>
+                  <button x-show="settings.companyLogo" type="button" class="btn btn-ghost btn-sm text-xs text-red-400" @click="removeCompanyLogo()"><span x-html="getIcon('trash')"></span> Remover logo</button>
+                </div>
+              </div>
+
+              <div class="space-y-3">
+                <div>
+                  <label class="label block mb-1">Nome do Aviário (Personalizado)</label>
+                  <input type="text" class="input text-xs sm:text-sm" x-model="settings.farmName">
+                </div>
+                <div>
+                  <label class="label block mb-1">Frase / Slogan</label>
+                  <input type="text" class="input text-xs sm:text-sm" x-model="settings.tagline">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="label block mb-1">Meta de FCR (Conversão)</label>
+                    <input type="number" step="0.05" class="input text-xs font-mono" x-model="settings.targetFCR">
+                  </div>
+                  <div>
+                    <label class="label block mb-1">Limite Máx. Mortalidade %</label>
+                    <input type="number" step="0.5" class="input text-xs font-mono" x-model="settings.maxMortalityPercent">
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="label block mb-1">Dias de Ciclo (Abate)</label>
+                    <input type="number" class="input text-xs font-mono" x-model="settings.cycleDays">
+                  </div>
+                  <div>
+                    <label class="label block mb-1">Peso Alvo Abate (kg)</label>
+                    <input type="number" step="0.1" class="input text-xs font-mono" x-model="settings.standardWeightTarget">
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex justify-end pt-2">
+                <button type="button" class="btn btn-primary text-xs font-bold" @click="persistFarm(); toast('Definições guardadas com sucesso!');">
+                  Guardar Definições
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </template>
+      </main>
+    </div>
+
+    <div class="app-brand-signature" aria-label="Créditos da aplicação">Desenvolvido por Bilar DigitalTech Solutions</div>
+
+    <!-- BOTTOM BAR MOBILE -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 card !rounded-none !border-x-0 !border-b-0 bg-[var(--bg-card)]/95 backdrop-blur-md flex justify-around py-2 px-1 shadow-2xl">
+      <button type="button" class="flex flex-col items-center gap-0.5 text-[10px]" :class="view==='dashboard' ? 'text-[var(--primary-light)] font-bold' : 'text-[var(--text-dim)]'" @click="goTo('dashboard')">
+        <span x-html="getIcon('dashboard')"></span> Painel
+      </button>
+      <button type="button" class="flex flex-col items-center gap-0.5 text-[10px]" :class="view==='controlo' ? 'text-[var(--primary-light)] font-bold' : 'text-[var(--text-dim)]'" @click="goTo('controlo')">
+        <span x-html="getIcon('controlo')"></span> Controlo
+      </button>
+      <button type="button" class="flex flex-col items-center gap-0.5 text-[10px]" :class="view==='lotes' ? 'text-[var(--primary-light)] font-bold' : 'text-[var(--text-dim)]'" @click="goTo('lotes')">
+        <span x-html="getIcon('lotes')"></span> Lotes
+      </button>
+      <button type="button" class="flex flex-col items-center gap-0.5 text-[10px]" :class="view==='racao' ? 'text-[var(--primary-light)] font-bold' : 'text-[var(--text-dim)]'" @click="goTo('racao')">
+        <span x-html="getIcon('racao')"></span> Ração
+      </button>
+      <button type="button" class="flex flex-col items-center gap-0.5 text-[10px]" :class="view==='vendas' ? 'text-[var(--primary-light)] font-bold' : 'text-[var(--text-dim)]'" @click="goTo('vendas')">
+        <span x-html="getIcon('vendas')"></span> Vendas
+      </button>
+      <button type="button" class="flex flex-col items-center gap-0.5 text-[10px]" :class="view==='financas' ? 'text-[var(--primary-light)] font-bold' : 'text-[var(--text-dim)]'" @click="goTo('financas')">
+        <span x-html="getIcon('financas')"></span> Caixa
+      </button>
+      <button type="button" class="flex flex-col items-center gap-0.5 text-[10px] text-[var(--accent-gold)] font-bold" @click="mobileMenuOpen=true">
+        <span x-html="getIcon('menu')"></span> Todas
+      </button>
+    </nav>
+
+  </div>
+</template>
+
+
+
+
+  
+
+
+<template x-teleport="body">
+<div x-show="showModalEntrada" x-cloak class="app-modal" @click.self="showModalEntrada=false" x-transition.opacity role="dialog" aria-modal="true">
+    <div class="app-modal-card modal-md p-5 space-y-4 border-2 border-emerald-500/40 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+        <div class="flex items-center gap-2">
+          <span x-html="getIcon('arrowDown')"></span>
+          <div>
+            <h3 class="font-bold text-base text-emerald-400">Registar Entrada no Caixa</h3>
+            <p class="text-xs text-[var(--text-dim)]">Receitas de vendas, adiantamentos ou injeção de capital</p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-xs text-base text-[var(--text-dim)] hover:text-white" @click="showModalEntrada=false" aria-label="Fechar"><span x-html="getIcon('x')"></span></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="label block mb-1">Tipo de Entrada</label>
+          <select class="input text-xs" x-model="newEntradaType">
+            <option value="VENDA">Venda Direta de Frangos / Produtos</option>
+            <option value="ADIANTAMENTO">Adiantamento / Sinal de Cliente</option>
+            <option value="RECEBIMENTO_DIVIDA">Pagamento de Dívida / Crédito</option>
+            <option value="APORTE">Aporte de Capital / Investimento</option>
+            <option value="OUTRO">Outra Entrada</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="label block mb-1">Descrição / Motivo</label>
+          <input type="text" class="input text-xs" placeholder="Ex: Venda de 50 frangos ao Restaurante Maré Viva" x-model="newEntradaDesc">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label block mb-1">Valor Total (MT)</label>
+            <input type="number" min="0" step="10" class="input text-xs font-bold font-mono text-emerald-400" placeholder="Ex: 15000" x-model="newEntradaAmount">
+          </div>
+          <div>
+            <label class="label block mb-1">Data</label>
+            <input type="date" class="input text-xs" x-model="newEntradaDate">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label block mb-1">Cliente Vinculado (Opcional)</label>
+            <select class="input text-xs" x-model="newEntradaClientId">
+              <option value="">Nenhum / Venda Balcão</option>
+              <template x-for="c in clients" :key="c.id">
+                <option :value="c.id" x-text="c.name + (c.debt > 0 ? ' (Dívida: ' + fmtMT(c.debt) + ')' : '')"></option>
+              </template>
+            </select>
+          </div>
+          <div>
+            <label class="label block mb-1">Forma de Recebimento</label>
+            <select class="input text-xs" x-model="newEntradaMethod">
+              <option value="Dinheiro">Dinheiro Físico</option>
+              <option value="M-Pesa">M-Pesa (+258)</option>
+              <option value="e-Mola">e-Mola (+258)</option>
+              <option value="Ponto24">Ponto24 / POS</option>
+              <option value="Transferência">Transf. Bancária (BIM/BCI)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="label block mb-1">Observações Adicionais</label>
+          <input type="text" class="input text-xs" placeholder="Nº Recibo, referência M-Pesa, etc." x-model="newEntradaObs">
+        </div>
+      </div>
+
+      <div class="flex gap-2 justify-end pt-2 border-t border-[var(--border-color)]">
+        <button type="button" class="btn btn-ghost btn-sm text-xs" @click="showModalEntrada=false">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm text-xs font-bold" @click="saveModalEntrada()">
+          <span x-html="getIcon('check')"></span> <span>Guardar Entrada</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+  <!-- Modal: Nova Saída de Caixa -->

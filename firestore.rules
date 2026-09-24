@@ -1,0 +1,143 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function myProfile() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function me() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isSuperAdmin() {
+      return myProfile() && me().data.roleType == 'super_admin';
+    }
+
+    function isAdmin() {
+      return myProfile() && me().data.roleType in ['admin', 'super_admin'];
+    }
+
+    function sameFarm(farmId) {
+      return myProfile() && me().data.farmId == farmId;
+    }
+
+    // Permite o primeiro cadastro: o próprio utilizador cria o seu perfil
+    // e, no mesmo batch, a exploração correspondente.
+    function firstAdminFarm(farmId) {
+      return signedIn()
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.roleType == 'super_admin'
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.farmId == farmId;
+    }
+
+
+    match /loginIdentifiers/{username} {
+      // Necessário antes da autenticação para permitir entrada por nome de utilizador.
+      // Este documento contém apenas o identificador de login técnico e o UID.
+      allow read: if true;
+      allow create: if firstAdminFarm(request.resource.data.farmId)
+        || (isAdmin() && request.resource.data.farmId == me().data.farmId)
+        || (signedIn() && request.resource.data.uid == request.auth.uid);
+      allow update: if isAdmin() && request.resource.data.farmId == me().data.farmId;
+      allow delete: if isAdmin() && resource.data.farmId == me().data.farmId;
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isSuperAdmin());
+
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && !exists(/databases/$(database)/documents/users/$(uid))
+        && request.resource.data.roleType == 'super_admin'
+        && request.resource.data.farmId is string;
+
+      allow create: if isAdmin()
+        && !exists(/databases/$(database)/documents/users/$(uid))
+        && request.resource.data.farmId == me().data.farmId
+        && request.resource.data.roleType in ['admin', 'employee', 'seller'];
+
+      allow update: if isSuperAdmin();
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.farmId == resource.data.farmId
+        && request.resource.data.roleType == resource.data.roleType
+        && request.resource.data.roles == resource.data.roles;
+
+      allow delete: if isSuperAdmin() && request.auth.uid != uid;
+    }
+
+    match /farms/{farmId} {
+      allow create: if firstAdminFarm(farmId);
+      allow read: if sameFarm(farmId);
+      allow update: if sameFarm(farmId) && isAdmin();
+      allow update: if sameFarm(farmId)
+        && me().data.roleType == 'employee'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'updatedAt','lotes','mortalityLogs','weightLogs','feedLogs','clients',
+          'attendance','stockItems','healthLogs','notifications'
+        ]);
+      allow update: if sameFarm(farmId)
+        && me().data.roleType == 'seller'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'updatedAt','clients','notifications'
+        ]);
+      allow delete: if sameFarm(farmId) && isSuperAdmin();
+
+      match /staff/{staffUid} {
+        allow read: if sameFarm(farmId);
+        allow create, update: if sameFarm(farmId)
+          && isAdmin()
+          && request.resource.data.farmId == farmId
+          && request.resource.data.uid == staffUid;
+      allow update: if sameFarm(farmId)
+          && signedIn()
+          && request.auth.uid == staffUid
+          && request.resource.data.farmId == resource.data.farmId
+          && request.resource.data.uid == resource.data.uid;
+        allow delete: if sameFarm(farmId) && isAdmin();
+      }
+
+      match /sales/{saleId} {
+        allow read: if sameFarm(farmId);
+        allow create: if sameFarm(farmId)
+          && (isAdmin() || me().data.roleType in ['employee','seller'])
+          && request.resource.data.farmId == farmId
+          && request.resource.data.createdByUid == request.auth.uid;
+        allow update, delete: if sameFarm(farmId) && isAdmin();
+      }
+
+      match /receipts/{receiptId} {
+        allow read: if sameFarm(farmId);
+        allow create: if sameFarm(farmId)
+          && (isAdmin() || me().data.roleType in ['employee','seller'])
+          && request.resource.data.farmId == farmId
+          && request.resource.data.createdByUid == request.auth.uid;
+        allow update, delete: if sameFarm(farmId) && isAdmin();
+      }
+
+      match /cashEntries/{entryId} {
+        allow read, create, update, delete: if sameFarm(farmId) && isAdmin();
+      }
+
+      match /expenses/{expenseId} {
+        allow read, create, update, delete: if sameFarm(farmId) && isAdmin();
+      }
+
+      match /financialAudits/{auditId} {
+        allow read, create, update, delete: if sameFarm(farmId) && isAdmin();
+      }
+
+      match /activityLogs/{logId} {
+        allow read: if sameFarm(farmId);
+        allow create: if sameFarm(farmId)
+          && (isAdmin() || me().data.roleType in ['employee','seller'])
+          && request.resource.data.farmId == farmId
+          && request.resource.data.uid == request.auth.uid;
+        allow update, delete: if sameFarm(farmId) && isAdmin();
+      }
+    }
+  }
+}
