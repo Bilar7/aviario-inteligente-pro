@@ -30,7 +30,10 @@ jobs:
       - name: Install dependencies
         run: npm ci --include=dev --no-audit --no-fund
 
-      - name: Corrigir permissões do Vite`r`n        run: chmod +x node_modules/.bin/vite`r`n`r`n      - name: Build application
+      - name: Corrigir permissões do Vite
+        run: chmod +x node_modules/.bin/vite
+
+      - name: Build application
         run: npm run build
 
       - name: Configure Pages
@@ -51,3 +54,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
