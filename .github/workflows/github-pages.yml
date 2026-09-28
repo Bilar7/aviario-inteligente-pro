@@ -28,9 +28,9 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install --include=dev --no-audit --no-fund
+        run: npm ci --include=dev --no-audit --no-fund
 
-      - name: Build application
+      - name: Corrigir permissões do Vite`r`n        run: chmod +x node_modules/.bin/vite`r`n`r`n      - name: Build application
         run: npm run build
 
       - name: Configure Pages
