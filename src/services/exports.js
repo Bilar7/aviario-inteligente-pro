@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { generateProfessionalAviarioPDF, generateSaleInvoicePDF } from "./pdf.js";
+import { generateProfessionalAviarioPDF, generateSaleInvoicePDF, generateFinanceReportPDF } from "./pdf.js";
 
 function safeText(value, fallback) { return String(value === undefined || value === null || value === '' ? (fallback || '') : value); }
 
@@ -324,7 +324,7 @@ export function exportSmartExcel(farmData) {
 
 export const exportElementToPDF = generateProfessionalAviarioPDF;
 
-export { generateProfessionalAviarioPDF };
+export { generateProfessionalAviarioPDF, generateFinanceReportPDF };
 
 export async function importSmartExcel(file, callback) {
   if (!file || typeof FileReader === 'undefined') return;

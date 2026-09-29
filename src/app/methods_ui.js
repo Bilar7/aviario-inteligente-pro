@@ -27,7 +27,10 @@ export const methods = {
         var allowed = ['pt', 'en', 'fr', 'sen', 'cga', 'emk'];
         this.currentLang = allowed.indexOf(lang) !== -1 ? lang : 'pt';
         SafeStorage.setItem('aviario_lang', this.currentLang);
-        this.toast('Idioma actualizado.');
+        document.documentElement.lang = this.currentLang === 'pt' ? 'pt-PT' : this.currentLang;
+        if (window.applyI18n) window.applyI18n();
+        if (this.$nextTick) this.$nextTick(function(){ if (window.applyI18n) window.applyI18n(); });
+        this.toast(window.t ? window.t('idiomaActualizado') : 'Idioma actualizado.');
       },
   applyTheme: function() {
         var mode = this.darkMode ? 'dark' : 'light';

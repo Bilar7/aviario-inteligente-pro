@@ -526,3 +526,16 @@ body.light .badge-success{background:#DCFCE7 !important;color:#15803D !important
   body.printing-sale-invoice .invoice-preview-body{padding:0}
   body.printing-sale-invoice .invoice-sheet{max-width:none;border:0;box-shadow:none}
 }
+
+/* FACTURA — barra de acções legível também quando a aplicação está em modo escuro. */
+.invoice-modal-toolbar .btn.btn-ghost,
+.invoice-action-bar .btn.btn-ghost{
+  background:#ffffff!important;
+  color:#0f172a!important;
+  border-color:#cbd5e1!important;
+}
+.invoice-modal-toolbar .btn.btn-ghost:hover,
+.invoice-action-bar .btn.btn-ghost:hover{
+  background:#f1f5f9!important;
+  color:#0f172a!important;
+}

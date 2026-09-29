@@ -308,7 +308,7 @@
                   <div class="shrink-0"><img :src="settings.companyLogo || './assets/icon-192.png'" alt="Logotipo da empresa" class="w-14 h-14 rounded-xl object-contain border border-[var(--border)] bg-white p-1"></div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div class="sm:col-span-2"><label class="label block mb-1">Nome legal / nome da empresa</label><input type="text" class="input text-xs sm:text-sm" x-model="settings.companyLegalName" placeholder="Ex.: Calton Frango, Lda."></div>
+                  <div class="sm:col-span-2"><label class="label block mb-1">Nome legal / nome da empresa</label><input type="text" class="input text-xs sm:text-sm" x-model="settings.companyLegalName" placeholder="Ex.: Nome legal da empresa"></div>
                   <div class="sm:col-span-2"><label class="label block mb-1">Subtítulo / actividade</label><input type="text" class="input text-xs sm:text-sm" x-model="settings.companySubtitle" placeholder="Ex.: Produção e comercialização de frangos"></div>
                   <div><label class="label block mb-1">Telefone</label><input type="text" class="input text-xs" x-model="settings.phone" placeholder="+258 ..."></div>
                   <div><label class="label block mb-1">E-mail</label><input type="email" class="input text-xs" x-model="settings.companyEmail" placeholder="empresa@exemplo.com"></div>
@@ -438,7 +438,7 @@
 
         <div>
           <label class="label block mb-1">Descrição / Motivo</label>
-          <input type="text" class="input text-xs" placeholder="Ex: Venda de 50 frangos ao Restaurante Maré Viva" x-model="newEntradaDesc">
+          <input type="text" class="input text-xs" placeholder="Ex.: Venda de frangos / recebimento de cliente" x-model="newEntradaDesc">
         </div>
 
         <div class="grid grid-cols-2 gap-3">

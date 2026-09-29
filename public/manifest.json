@@ -5,7 +5,10 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone"],
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
   "background_color": "#0B1315",
   "theme_color": "#22C55E",
   "orientation": "any",
@@ -24,5 +27,7 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "id": "./",
+  "prefer_related_applications": false
 }

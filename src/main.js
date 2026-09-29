@@ -6,7 +6,7 @@ import "./styles/components.css";
 import "./styles/utilities.css";
 import "./styles/responsive.css";
 import { createAppState } from "./app/store.js";
-import { exportSmartExcel, importSmartExcel, generateProfessionalAviarioPDF, generateSaleInvoicePDF } from "./services/exports.js";
+import { exportSmartExcel, importSmartExcel, generateProfessionalAviarioPDF, generateSaleInvoicePDF, generateFinanceReportPDF } from "./services/exports.js";
 import "./services/firebase.js";
 import "./services/icons.js";
 import "./services/i18n.js";
@@ -43,39 +43,51 @@ window.exportSmartExcel = exportSmartExcel;
 window.importSmartExcel = importSmartExcel;
 window.generateProfessionalAviarioPDF = generateProfessionalAviarioPDF;
 window.generateSaleInvoicePDF = generateSaleInvoicePDF;
+window.generateFinanceReportPDF = generateFinanceReportPDF;
 
-// PWA: guarda o pedido nativo de instalação quando o navegador o disponibiliza.
+// PWA: mantém o pedido nativo de instalação e disponibiliza uma entrada visível no sistema.
 let deferredInstallPrompt = null;
+const pwaStandalone = () => window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
 window.pwaInstallAvailable = false;
+window.pwaInstalled = pwaStandalone() || window.navigator.standalone === true;
 window.addEventListener("beforeinstallprompt", (event) => {
   event.preventDefault();
   deferredInstallPrompt = event;
   window.pwaInstallAvailable = true;
-  window.dispatchEvent(new CustomEvent("pwa-install-available", { detail: { available: true } }));
+  window.dispatchEvent(new CustomEvent("pwa-install-available", { detail: { available: true, installed: false } }));
 });
 
 window.installAviarioPWA = async function () {
+  if (window.pwaInstalled || pwaStandalone()) {
+    window.pwaInstalled = true;
+    window.dispatchEvent(new CustomEvent("pwa-install-available", { detail: { available: false, installed: true } }));
+    return true;
+  }
   if (!deferredInstallPrompt) {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isAndroid = /android/i.test(navigator.userAgent);
     if (isIOS) {
-      alert("Para instalar no iPhone/iPad: abra o menu Partilhar do Safari e escolha \"Adicionar ao Ecrã Principal\".");
+      alert("Para instalar o Aviário Inteligente Pro no iPhone/iPad: no Safari toque em Partilhar e escolha «Adicionar ao Ecrã Principal».");
+    } else if (isAndroid) {
+      alert("Para instalar o Aviário Inteligente Pro: abra o endereço oficial por HTTPS no Chrome e escolha «Instalar aplicação» ou «Adicionar ao ecrã principal» no menu ⋮. Se esta opção não aparecer, actualize a página e confirme que está no endereço oficial HTTPS.");
     } else {
-      alert("A instalação ainda não está disponível neste navegador. Abra o Aviário por HTTPS (por exemplo, pelo GitHub Pages) e use o menu do navegador para instalar a aplicação.");
+      alert("Para instalar o Aviário Inteligente Pro: abra o endereço oficial por HTTPS no Chrome ou Edge e escolha «Instalar Aviário Pro» na barra de endereço ou «Instalar aplicação» no menu do navegador.");
     }
     return false;
   }
-
   deferredInstallPrompt.prompt();
   const choice = await deferredInstallPrompt.userChoice;
   deferredInstallPrompt = null;
   window.pwaInstallAvailable = false;
-  window.dispatchEvent(new CustomEvent("pwa-install-available", { detail: { available: false, outcome: choice && choice.outcome } }));
+  if (choice && choice.outcome === "accepted") window.pwaInstalled = true;
+  window.dispatchEvent(new CustomEvent("pwa-install-available", { detail: { available: false, outcome: choice && choice.outcome, installed: window.pwaInstalled } }));
   return choice && choice.outcome === "accepted";
 };
 
 window.addEventListener("appinstalled", () => {
   deferredInstallPrompt = null;
   window.pwaInstallAvailable = false;
+  window.pwaInstalled = true;
   window.dispatchEvent(new CustomEvent("pwa-install-available", { detail: { available: false, installed: true } }));
 });
 

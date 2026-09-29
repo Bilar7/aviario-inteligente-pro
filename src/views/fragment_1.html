@@ -108,7 +108,7 @@
       <div class="grid grid-cols-2 gap-2.5">
         <div>
           <label class="label block mb-1">Código do Lote</label>
-          <input type="text" class="input text-xs font-bold" placeholder="Ex: L-2026-004" x-model="newLoteCode">
+          <input type="text" class="input text-xs font-bold" placeholder="Ex.: código do lote" x-model="newLoteCode">
         </div>
         <div>
           <label class="label block mb-1">Data de Entrada</label>
@@ -119,7 +119,7 @@
       <div class="grid grid-cols-2 gap-2.5">
         <div>
           <label class="label block mb-1">Quantidade Inicial (Pintos)</label>
-          <input type="number" min="1" step="1" class="input text-xs font-mono font-bold text-[var(--primary-light)]" placeholder="2000" x-model="newLoteBirds" @input="newLoteCostChicks = (Number(newLoteBirds)||0) * (Number(newLotePricePerChick)||0)">
+          <input type="number" min="1" step="1" class="input text-xs font-mono font-bold text-[var(--primary-light)]" placeholder="Quantidade de aves" x-model="newLoteBirds" @input="newLoteCostChicks = (Number(newLoteBirds)||0) * (Number(newLotePricePerChick)||0)">
         </div>
         <div>
           <label class="label block mb-1">Raça / Linhagem</label>
@@ -135,7 +135,7 @@
       <div class="grid grid-cols-2 gap-2.5">
         <div>
           <label class="label block mb-1">Fornecedor / Incubadora</label>
-          <input type="text" class="input text-xs" placeholder="Higest Moçambique" x-model="newLoteSupplier">
+          <input type="text" class="input text-xs" placeholder="Nome do fornecedor / incubadora" x-model="newLoteSupplier">
         </div>
         <div>
           <label class="label block mb-1">Idade Inicial (dias)</label>
@@ -148,7 +148,7 @@
       <div class="grid grid-cols-2 gap-2.5">
         <div>
           <label class="label block mb-1">Preço por Pinto (MT)</label>
-          <input type="number" min="0" step="any" class="input text-xs font-mono" placeholder="55" x-model="newLotePricePerChick" @input="newLoteCostChicks = (Number(newLoteBirds)||0) * (Number(newLotePricePerChick)||0)">
+          <input type="number" min="0" step="any" class="input text-xs font-mono" placeholder="Preço por pinto (MT)" x-model="newLotePricePerChick" @input="newLoteCostChicks = (Number(newLoteBirds)||0) * (Number(newLotePricePerChick)||0)">
         </div>
         <div>
           <label class="label block mb-1">Custo Total dos Pintos (MT)</label>
@@ -311,8 +311,8 @@
       <!-- Emblema de Logo Arqueado (Galinha & Aviário) -->
       <div class="auth-logo-badge" aria-label="Logótipo Aviário Gestão Inteligente">
         <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
-          <path d="M8 28 32 9l24 19v27H8V28Z" fill="rgba(255,255,255,.16)" stroke="white" stroke-width="2.4"/>
-          <path d="M18 55V34h28v21" stroke="white" stroke-width="2.4"/>
+          <path d="M8 28 32 9l24 19v27H8V28Z" fill="rgba(2Preço por pinto (MT),2Preço por pinto (MT),2Preço por pinto (MT),.16)" stroke="white" stroke-width="2.4"/>
+          <path d="M18 Preço por pinto (MT)V34h28v21" stroke="white" stroke-width="2.4"/>
           <path d="M24 27c0-6 5-10 10-7 2 1 3 3 3 5 0 4-3 7-7 7h-5c-3 0-5-2-5-5 0-1 1-2 4-2Z" fill="#fff"/>
           <circle cx="34" cy="23" r="1.6" fill="#059669"/>
           <path d="M39 23h7l-5 3M27 20l-1.5-4M31 19l2-4" stroke="white" stroke-width="2" stroke-linecap="round"/>

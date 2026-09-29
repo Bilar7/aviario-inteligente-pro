@@ -84,33 +84,15 @@ export const methods = {
         var self=this;
         var trans=this.getFilteredTransactions();
         var sum=this.getEliteFinSummary(this.finPeriod);
-        var smart=this.getSmartKPIs();
-        return window.generateProfessionalAviarioPDF({
+        return window.generateFinanceReportPDF({
           settings:this.settings||{},
-          kpis:smart||this.getSummaryKPIs&&this.getSummaryKPIs()||{},
-          lotes:this.lotes||[],
-          sales:this.sales||[],
-          feedLogs:this.feedLogs||[],
-          mortalityLogs:this.mortalityLogs||[],
-          clients:this.clients||[],
-          expenses:this.expenses||[],
-          receipts:this.receipts||[],
-          stockItems:this.stockItems||[],
-          healthLogs:this.healthLogs||[],
-          attendance:this.attendance||[],
-          energyLogs:this.energyLogs||[],
-          suppliers:this.suppliers||[],
-          notifications:this.notifications||[],
-          cashTransactions:trans,
-          priceTable:this.priceTable||[],
+          period:this.finPeriod,
           financeSummary:Object.assign({periodo:self.finPeriod},sum||{}),
-          financeProjection:smart&&smart.projection?smart.projection:{},
-          alerts:this.getProfessionalAlerts?this.getProfessionalAlerts():[],
-          agenda:this.getDailyAgenda?this.getDailyAgenda():[]
-        }, 'Relatorio_Financeiro_'+this.todayStr()).then(function(){
-          self.toast('PDF financeiro completo descarregado com os dados reais do período.');
+          cashTransactions:trans||[]
+        }).then(function(){
+          self.toast('PDF financeiro descarregado com os dados do Livro de Caixa e todos os métodos de pagamento.');
         }).catch(function(err){
-          self.toast('Não foi possível gerar o PDF: '+(err&&err.message?err.message:'erro desconhecido'),'error');
+          self.toast('Não foi possível gerar o PDF financeiro: '+(err&&err.message?err.message:'erro desconhecido'),'error');
         });
       },
   deleteTransactionWithAudit: function(t) {

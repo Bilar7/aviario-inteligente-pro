@@ -7,9 +7,12 @@
           <span x-show="notifications.length" x-text="notifications.length > 9 ? '9+' : notifications.length" class="notification-badge"></span>
         </button>
 
-        <!-- Instalação PWA: aparece quando o navegador disponibiliza a instalação nativa -->
-        <div x-data="{ pwaReady: false }" @pwa-install-available.window="pwaReady = $event.detail.available" class="contents">
-          <button x-show="pwaReady" x-cloak type="button" class="action-btn top-icon-btn mobile-secondary-control !p-1.5 !h-8 !w-8 justify-center" @click="window.installAviarioPWA()" title="Instalar Aviário Pro" aria-label="Instalar Aviário Pro">
+        <!-- Instalação PWA: fica visível enquanto a aplicação ainda não estiver instalada. -->
+        <div x-data="{ pwaReady: false, pwaInstalled: false }"
+             x-init="pwaReady = !!window.pwaInstallAvailable; pwaInstalled = !!window.pwaInstalled"
+             @pwa-install-available.window="pwaReady = !!$event.detail.available; pwaInstalled = !!$event.detail.installed"
+             class="contents">
+          <button x-show="!pwaInstalled" x-cloak type="button" class="action-btn top-icon-btn pwa-install-control !p-1.5 !h-8 !w-8 justify-center" @click="window.installAviarioPWA()" title="Instalar Aviário Pro como aplicação" aria-label="Instalar Aviário Pro como aplicação">
             <span x-html="getIcon('download')"></span>
           </button>
         </div>

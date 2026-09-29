@@ -356,6 +356,69 @@ export function generateProfessionalAviarioPDF(farmData, title) {
     return {success:true};
   });
 }
+
+function financeReportMoney(value) {
+  return Number(value || 0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' MT';
+}
+
+function financeReportEscape(value) {
+  return String(value === undefined || value === null ? '—' : value)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function captureFinanceReport(farmData) {
+  farmData=farmData||{};
+  var settings=farmData.settings||{};
+  var sum=farmData.financeSummary||{};
+  var methods=Object.assign({'Dinheiro':0,'M-Pesa':0,'e-Mola':0,'Transferência':0,'Cartão':0,'Crédito':0,'Outros':0},sum.methods||{});
+  var transactions=Array.isArray(farmData.cashTransactions)?farmData.cashTransactions:[];
+  var company=financeReportEscape(settings.companyLegalName||settings.farmName||'Aviário Inteligente Pro');
+  var subtitle=financeReportEscape(settings.companySubtitle||settings.tagline||'Gestão Avícola');
+  var meta=financeReportEscape([settings.companyAddress||settings.location,settings.phone,settings.companyEmail].filter(Boolean).join(' · '));
+  var period=financeReportEscape(sum.periodo||farmData.period||'Todo o histórico');
+  var logo=resolvePdfAsset(settings.companyLogo||'./assets/icon-192.png');
+  var methodLabels=[['Dinheiro','Dinheiro'],['M-Pesa','M-Pesa'],['e-Mola','e-Mola'],['Transferência','Transferência'],['Cartão','Cartão'],['Crédito','Crédito / Fiado'],['Outros','Outros']];
+  var methodCards=methodLabels.map(function(item){return '<div class="fm-method"><span>'+financeReportEscape(item[1])+'</span><strong>'+financeReportMoney(methods[item[0]])+'</strong></div>';}).join('');
+  var rows=transactions.map(function(t){
+    var type=t.type||t.tipo||'—';
+    var amount=Number(t.amount)||0;
+    var displayAmount=(String(type).toUpperCase().indexOf('SA')!==-1?'-':'')+financeReportMoney(amount);
+    return '<tr><td>'+financeReportEscape(t.date||'—')+'</td><td>'+financeReportEscape(type)+'</td><td>'+financeReportEscape(t.category||'—')+'</td><td>'+financeReportEscape(t.desc||t.description||'—')+'</td><td>'+financeReportEscape(t.paymentMethod||'—')+'</td><td class="num">'+financeReportEscape(displayAmount)+'</td></tr>';
+  }).join('');
+  var logoData='';
+  try { var response=await fetch(logo,{cache:'no-store'}); if(response.ok) logoData=await dataUrlFromBlob(await response.blob()); } catch(e) {}
+  if(!logoData) logoData='./assets/icon-192.png';
+
+  var holder=document.createElement('div');
+  holder.style.position='fixed'; holder.style.left='-10000px'; holder.style.top='0'; holder.style.width='794px'; holder.style.background='#fff'; holder.style.zIndex='-1'; holder.style.pointerEvents='none';
+  holder.innerHTML=`
+  <div class="finance-pdf-sheet">
+    <div class="fm-head">
+      <div class="fm-brand"><div class="fm-logo"><img src="${logoData}" alt=""></div><div><div class="fm-company">${company}</div><div class="fm-subtitle">${subtitle}</div><div class="fm-meta">${meta}</div></div></div>
+      <div class="fm-doc"><div>RELATÓRIO FINANCEIRO</div><small>Período: <strong>${period}</strong></small><small>Emitido em ${financeReportEscape(new Date().toLocaleString('pt-PT'))}</small></div>
+    </div>
+    <div class="fm-section"><div class="fm-kpis"><div class="fm-kpi"><span>Saldo em caixa</span><strong>${financeReportMoney(sum.saldoCaixa)}</strong></div><div class="fm-kpi"><span>Entradas</span><strong>${financeReportMoney(sum.periodReceitas)}</strong></div><div class="fm-kpi"><span>Saídas</span><strong>${financeReportMoney(sum.periodDespesas)}</strong></div><div class="fm-kpi"><span>Resultado</span><strong>${financeReportMoney(sum.lucro)}</strong></div></div></div>
+    <div class="fm-section"><h2>Métodos de pagamento</h2><div class="fm-methods">${methodCards}</div></div>
+    <div class="fm-section"><h2>Livro de caixa</h2><table><thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th>Método</th><th>Valor</th></tr></thead><tbody>${rows || '<tr><td colspan="6" class="fm-empty">Nenhum movimento no período seleccionado.</td></tr>'}</tbody></table></div>
+    <div class="fm-foot"><span>Documento emitido pelo Aviário Inteligente Pro.</span><span>Relatório financeiro</span></div>
+  </div>`;
+  var style=document.createElement('style');
+  style.textContent=`
+  .finance-pdf-sheet{width:794px;background:#fff;color:#111827;font-family:Arial,Helvetica,sans-serif;padding-bottom:28px;box-sizing:border-box}.fm-head{padding:28px 34px 20px;border-bottom:2px solid #0f172a;display:flex;align-items:flex-start;justify-content:space-between;gap:24px}.fm-brand{display:flex;gap:14px;align-items:flex-start;min-width:0}.fm-logo{width:62px;height:62px;flex:0 0 62px;border:1px solid #d9e0e7;border-radius:10px;padding:5px;box-sizing:border-box;background:#fff;display:flex;align-items:center;justify-content:center}.fm-logo img{width:100%;height:100%;object-fit:contain}.fm-company{font-size:22px;font-weight:900;line-height:1.12;color:#0f172a;overflow-wrap:anywhere}.fm-subtitle{margin-top:5px;font-size:11px;font-weight:700;color:#0f766e}.fm-meta{margin-top:7px;font-size:9px;color:#64748b}.fm-doc{text-align:right;min-width:170px}.fm-doc>div{font-size:10px;font-weight:900;letter-spacing:.16em;color:#64748b}.fm-doc small{display:block;margin-top:7px;font-size:9px;color:#64748b}.fm-section{padding:20px 34px 0}.fm-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.fm-kpi{padding:12px;border:1px solid #dbe2ea;border-radius:9px;background:#f8fafc}.fm-kpi span{display:block;font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#64748b}.fm-kpi strong{display:block;margin-top:6px;font-size:15px;color:#0f172a}.fm-section h2{margin:0 0 10px;font-size:13px;color:#0f172a;text-transform:uppercase;letter-spacing:.08em}.fm-methods{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.fm-method{padding:10px;border:1px solid #dbe2ea;border-radius:9px;background:#fff;min-height:48px}.fm-method span{display:block;font-size:8px;color:#64748b;font-weight:800}.fm-method strong{display:block;margin-top:5px;font-size:11px;color:#0f172a}.finance-pdf-sheet table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9px}.finance-pdf-sheet th{padding:8px 6px;background:#172033;color:#fff;border:1px solid #172033;text-align:left;font-size:8px;text-transform:uppercase}.finance-pdf-sheet th:nth-child(1){width:11%}.finance-pdf-sheet th:nth-child(2){width:11%}.finance-pdf-sheet th:nth-child(3){width:16%}.finance-pdf-sheet th:nth-child(4){width:29%}.finance-pdf-sheet th:nth-child(5){width:15%}.finance-pdf-sheet th:nth-child(6){width:18%;text-align:right}.finance-pdf-sheet td{padding:7px 6px;border:1px solid #d5dde5;color:#1e293b;vertical-align:top;overflow-wrap:anywhere}.finance-pdf-sheet tbody tr:nth-child(even){background:#f8fafc}.finance-pdf-sheet td.num{text-align:right;font-weight:800}.finance-pdf-sheet td.fm-empty{text-align:center;color:#64748b;padding:18px}.fm-foot{margin:24px 34px 0;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;gap:20px;font-size:8px;color:#64748b}`;
+  holder.appendChild(style); document.body.appendChild(holder);
+  try { var sheet=holder.querySelector('.finance-pdf-sheet'); await new Promise(function(resolve){requestAnimationFrame(function(){requestAnimationFrame(resolve);});}); return await html2canvas(sheet,{backgroundColor:'#ffffff',scale:2,useCORS:true,allowTaint:false,logging:false,imageTimeout:10000,width:794,height:sheet.scrollHeight,windowWidth:794,windowHeight:Math.max(sheet.scrollHeight,1000)}); }
+  finally { holder.remove(); }
+}
+
+export async function generateFinanceReportPDF(farmData) {
+  var data=farmData||{}; var canvas=await captureFinanceReport(data); if(!canvas||!canvas.width||!canvas.height) throw new Error('O relatório financeiro ficou vazio.');
+  var a4WidthPx=canvas.width, a4HeightPx=Math.round(a4WidthPx*(842/595)), pages=[], images={}, pageCount=Math.max(1,Math.ceil(canvas.height/a4HeightPx));
+  for(var p=0;p<pageCount;p++){ var key='finance'+p; images[key]=canvasPageImage(canvas,p*a4HeightPx,a4HeightPx); var drawH=images[key].height<a4HeightPx?842*(images[key].height/a4HeightPx):842; pages.push({ops:['q 595 0 0 '+drawH.toFixed(2)+' 0 '+(842-drawH).toFixed(2)+' cm /Im'+key+' Do Q'],y:0}); }
+  var bytes=buildPdfDocument(pages,images), blob=new Blob([bytes],{type:'application/pdf'}), url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download='Relatorio_Financeiro_'+String(data.period||(data.financeSummary&&data.financeSummary.periodo)||'historico').replace(/[^A-Za-z0-9_-]+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url);},3000); return {success:true,exactPreview:true};
+}
+
 function dataUrlFromBlob(blob) {
   return new Promise(function(resolve, reject){
     try {

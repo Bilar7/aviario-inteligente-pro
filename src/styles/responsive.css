@@ -120,3 +120,15 @@ button, input, select, textarea { max-width:100%; }
 .invoice-preview-document{min-width:0!important}
 .invoice-preview-body{min-width:0!important;overflow-x:hidden!important}
 .invoice-sheet{min-width:0!important}
+
+/* PWA — acesso claro à instalação em qualquer dispositivo. */
+.pwa-install-control{color:var(--primary-light)!important;border-color:color-mix(in srgb,var(--primary) 45%,var(--border-color))!important;background:var(--primary-soft)!important}
+.pwa-install-control:hover{background:var(--primary)!important;color:#fff!important}
+@media(max-width:767px){
+  .app-header .pwa-install-control{display:inline-flex!important}
+}
+
+/* PWA — acesso claro à instalação em qualquer dispositivo. */
+.pwa-install-control{color:var(--primary-light)!important;border-color:color-mix(in srgb,var(--primary) 45%,var(--border-color))!important;background:var(--primary-soft)!important}
+.pwa-install-control:hover{background:var(--primary)!important;color:#fff!important}
+@media(max-width:767px){.app-header .pwa-install-control{display:inline-flex!important}}
