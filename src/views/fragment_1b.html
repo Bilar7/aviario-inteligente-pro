@@ -1,0 +1,30 @@
+          <span x-html="voiceEnabled ? getIcon('volume') : getIcon('mute')"></span>
+        </button>
+
+        <!-- Notificações -->
+        <button type="button" class="action-btn top-icon-btn notification-control !p-1.5 !h-8 !w-8 justify-center relative" @click="showNotificationsModal=true" title="Notificações" aria-label="Abrir notificações">
+          <span x-html="getIcon('notifications')"></span>
+          <span x-show="notifications.length" x-text="notifications.length > 9 ? '9+' : notifications.length" class="notification-badge"></span>
+        </button>
+
+        <!-- Instalação PWA: fica visível enquanto a aplicação ainda não estiver instalada. -->
+        <div x-data="{ pwaReady: false, pwaInstalled: false }"
+             x-init="pwaReady = !!window.pwaInstallAvailable; pwaInstalled = !!window.pwaInstalled"
+             @pwa-install-available.window="pwaReady = !!$event.detail.available; pwaInstalled = !!$event.detail.installed"
+             class="contents">
+          <button x-show="!pwaInstalled" x-cloak type="button" class="action-btn top-icon-btn pwa-install-control !p-1.5 !h-8 !w-8 justify-center" @click="window.installAviarioPWA()" title="Instalar Aviário Pro como aplicação" aria-label="Instalar Aviário Pro como aplicação">
+            <span x-html="getIcon('download')"></span>
+          </button>
+        </div>
+
+        <!-- Tema -->
+        <button type="button" class="action-btn top-icon-btn icon-tooltip !p-1.5 !h-8 !w-8 justify-center" @click="toggleTheme()" :data-tooltip="darkMode ? 'Modo claro' : 'Modo escuro'" :title="darkMode ? 'Modo claro' : 'Modo escuro'">
+          <span x-html="darkMode ? getIcon('sun') : getIcon('moon')"></span>
+        </button>
+
+        <button type="button" class="action-btn danger mobile-secondary-control !p-1.5 !h-8 !w-8 justify-center" @click="logout()" title="Terminar Sessão">
+          <span x-html="getIcon('logout')"></span>
+        </button>
+      </div>
+    </header>
+

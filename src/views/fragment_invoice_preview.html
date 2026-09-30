@@ -1,0 +1,117 @@
+<template x-if="view==='vendas' && invoicePreviewOpen && invoicePreview">
+  <div id="invoice-preview-modal"
+       x-show="invoicePreviewOpen && invoicePreview !== null"
+       class="invoice-modal"
+       @keydown.escape.window="closeSaleInvoice()">
+    <div class="invoice-preview-document" role="dialog" aria-modal="true" aria-label="Pré-visualização da factura">
+      <div class="invoice-modal-toolbar">
+        <div>
+          <p class="invoice-modal-title">Factura de venda</p>
+          <p class="invoice-modal-subtitle">Conferência do documento antes de imprimir ou baixar em PDF.</p>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" @click="closeSaleInvoice()">Fechar</button>
+      </div>
+
+      <div class="invoice-preview-body">
+        <article class="invoice-sheet">
+          <header class="invoice-sheet-header">
+            <div class="invoice-company-block">
+              <div class="invoice-logo-box">
+                <img :src="invoicePreview && invoicePreview.settings && invoicePreview.settings.companyLogo ? invoicePreview.settings.companyLogo : './assets/icon-192.png'"
+                     alt="Logotipo da empresa"
+                     class="invoice-company-logo"
+                     @error="$event.target.src='./assets/icon-192.png'">
+              </div>
+              <div class="invoice-company-info">
+                <h1 x-text="invoicePreview && invoicePreview.settings ? (invoicePreview.settings.companyLegalName || invoicePreview.settings.farmName || 'Aviário Inteligente Pro') : 'Aviário Inteligente Pro'"></h1>
+                <p class="invoice-company-subtitle" x-text="invoicePreview && invoicePreview.settings ? (invoicePreview.settings.companySubtitle || invoicePreview.settings.tagline || 'Sistema Integrado de Gestão Avícola & Produção') : 'Sistema Integrado de Gestão Avícola & Produção'"></p>
+                <p class="invoice-company-contact" x-text="invoicePreview && invoicePreview.settings ? [invoicePreview.settings.companyAddress || invoicePreview.settings.location, invoicePreview.settings.phone, invoicePreview.settings.companyEmail].filter(Boolean).join(' · ') : ''"></p>
+              </div>
+            </div>
+
+            <div class="invoice-number-block">
+              <span>FACTURA</span>
+              <strong x-text="invoicePreview ? (invoicePreview.invoiceNumber || 'FT-—') : 'FT-—'"></strong>
+              <small x-text="invoicePreview ? ((invoicePreview.date || '') + (invoicePreview.time ? ' · ' + invoicePreview.time : '')) : ''"></small>
+            </div>
+          </header>
+
+          <section class="invoice-parties-grid">
+            <div class="invoice-info-card">
+              <span>CLIENTE</span>
+              <strong x-text="invoicePreview ? (invoicePreview.clientName || 'Cliente não identificado') : '—'"></strong>
+              <small x-show="invoicePreview && invoicePreview.clientPhone" x-text="invoicePreview ? (invoicePreview.clientPhone || '') : ''"></small>
+            </div>
+            <div class="invoice-info-card">
+              <span>LOTE / PRODUTO</span>
+              <strong x-text="invoicePreview ? (invoicePreview.loteCode || '—') : '—'"></strong>
+              <small x-text="invoicePreview ? (invoicePreview.product || 'Frango de corte') : '—'"></small>
+            </div>
+          </section>
+
+          <section class="invoice-items-section">
+            <table class="invoice-items-table">
+              <thead>
+                <tr>
+                  <th class="description">Descrição</th>
+                  <th>Quantidade</th>
+                  <th>Preço unitário</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="description strong" x-text="invoicePreview ? (invoicePreview.product || 'Frango de corte') : '—'"></td>
+                  <td x-text="invoicePreview ? ((invoicePreview.qty || 0) + ' un.') : '0 un.'"></td>
+                  <td x-text="invoicePreview ? fmtMT(invoicePreview.priceUnit) : '0,00 MT'"></td>
+                  <td class="strong" x-text="invoicePreview ? fmtMT(invoicePreview.totalAmount) : '0,00 MT'"></td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section class="invoice-financial-section">
+            <div class="invoice-payment-box">
+              <h2>Pagamento</h2>
+              <div class="invoice-detail-row"><span>Forma de pagamento</span><strong x-text="invoicePreview ? (invoicePreview.paymentMethod || '—') : '—'"></strong></div>
+              <div class="invoice-detail-row"><span>Estado</span><strong x-text="invoicePreview ? (invoicePreview.paymentStatus || ((Number(invoicePreview.debtAmount)||0) > 0 ? 'Pendente' : 'Pago')) : '—'"></strong></div>
+              <div class="invoice-detail-row"><span>Valor pago</span><strong x-text="invoicePreview ? fmtMT(invoicePreview.paidAmount) : '0,00 MT'"></strong></div>
+              <div class="invoice-detail-row"><span>Saldo em dívida</span><strong x-text="invoicePreview ? fmtMT(invoicePreview.debtAmount) : '0,00 MT'"></strong></div>
+            </div>
+
+            <div class="invoice-total-box">
+              <span>TOTAL DA FACTURA</span>
+              <strong x-text="invoicePreview ? fmtMT(invoicePreview.totalAmount) : '0,00 MT'"></strong>
+            </div>
+          </section>
+
+          <section class="invoice-footer-section">
+            <div class="invoice-issued-by">
+              <span>EMITIDO POR</span>
+              <strong x-text="invoicePreview ? (invoicePreview.responsible || (currentUser && currentUser.nome) || '—') : '—'"></strong>
+            </div>
+
+            <div class="invoice-signature" x-show="invoicePreview && invoicePreview.settings && (invoicePreview.settings.signatureImage || invoicePreview.settings.signatureName)">
+              <template x-if="invoicePreview && invoicePreview.settings && invoicePreview.settings.signatureImage">
+                <img :src="invoicePreview.settings.signatureImage" alt="Assinatura da empresa">
+              </template>
+              <div class="invoice-signature-line" x-show="invoicePreview && invoicePreview.settings && !invoicePreview.settings.signatureImage"></div>
+              <strong x-text="invoicePreview && invoicePreview.settings ? invoicePreview.settings.signatureName : ''"></strong>
+              <small x-text="invoicePreview && invoicePreview.settings ? invoicePreview.settings.signatureTitle : ''"></small>
+            </div>
+          </section>
+
+          <footer class="invoice-sheet-footer">
+            <span>Documento emitido pelo Aviário Inteligente Pro.</span>
+            <span>Factura de venda</span>
+          </footer>
+        </article>
+
+        <div class="invoice-action-bar">
+          <button type="button" class="btn btn-ghost" @click="printSaleInvoice()">Imprimir</button>
+          <button type="button" class="btn btn-primary font-bold" @click="downloadSaleInvoicePDF()">Baixar PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
