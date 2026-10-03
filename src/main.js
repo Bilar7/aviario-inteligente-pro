@@ -45,77 +45,18 @@ window.generateProfessionalAviarioPDF = generateProfessionalAviarioPDF;
 window.generateSaleInvoicePDF = generateSaleInvoicePDF;
 window.generateFinanceReportPDF = generateFinanceReportPDF;
 
-// PWA: mantém o pedido nativo de instalação, o botão visível e a instrução correta para iOS/Android/PC.
-let deferredInstallPrompt = null;
-const pwaStandalone = () => {
-  return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
-};
-
-window.pwaInstallAvailable = false;
-window.pwaInstalled = pwaStandalone();
-
-const notifyPwaState = function(detail) {
-  var payload = {
-    available: !!(detail && detail.available),
-    installed: !!(detail && detail.installed),
-    outcome: detail && detail.outcome ? detail.outcome : null
-  };
-  window.dispatchEvent(new CustomEvent("pwa-install-available", { detail: payload }));
-};
-
-window.addEventListener("beforeinstallprompt", (event) => {
+// PWA: mantemos apenas o fluxo nativo do navegador para instalar como app.
+// Não há botão customizado nem conflitos com o prompt do sistema.
+const isStandalone = () => window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+window.addEventListener('beforeinstallprompt', (event) => {
   event.preventDefault();
-  deferredInstallPrompt = event;
-  if (!window.pwaInstalled) {
-    window.pwaInstallAvailable = true;
-    notifyPwaState({ available: true, installed: false });
-  }
+  window.deferredInstallPrompt = event;
+  window.pwaInstalled = !!(isStandalone() || window.navigator.standalone);
 });
 
-window.installAviarioPWA = async function () {
-  if (window.pwaInstalled || pwaStandalone()) {
-    window.pwaInstalled = true;
-    window.pwaInstallAvailable = false;
-    notifyPwaState({ available: false, installed: true });
-    return true;
-  }
-
-  if (!deferredInstallPrompt) {
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isAndroid = /android/i.test(navigator.userAgent);
-    if (isIOS) {
-      alert("Para instalar o Aviário Inteligente Pro no iPhone/iPad: no Safari toque em Partilhar e escolha «Adicionar ao Ecrã Principal».");
-    } else if (isAndroid) {
-      alert("Para instalar o Aviário Inteligente Pro: abra o endereço oficial por HTTPS no Chrome e escolha «Instalar aplicação» ou «Adicionar ao ecrã principal» no menu ⋮. Se esta opção não aparecer, actualize a página e confirme que está no endereço oficial HTTPS.");
-    } else {
-      alert("Para instalar o Aviário Inteligente Pro: abra o endereço oficial por HTTPS no Chrome ou Edge e escolha «Instalar Aviário Pro» na barra de endereço ou «Instalar aplicação» no menu do navegador.");
-    }
-    return false;
-  }
-
-  try {
-    deferredInstallPrompt.prompt();
-    const choice = await deferredInstallPrompt.userChoice;
-    deferredInstallPrompt = null;
-    window.pwaInstallAvailable = false;
-    if (choice && choice.outcome === "accepted") {
-      window.pwaInstalled = true;
-    }
-    notifyPwaState({ available: false, outcome: choice && choice.outcome, installed: window.pwaInstalled });
-    return choice && choice.outcome === "accepted";
-  } catch (err) {
-    deferredInstallPrompt = null;
-    window.pwaInstallAvailable = false;
-    notifyPwaState({ available: false, installed: false });
-    return false;
-  }
-};
-
-window.addEventListener("appinstalled", () => {
-  deferredInstallPrompt = null;
-  window.pwaInstallAvailable = false;
+window.addEventListener('appinstalled', () => {
+  window.deferredInstallPrompt = null;
   window.pwaInstalled = true;
-  notifyPwaState({ available: false, installed: true });
 });
 
 if (location.protocol !== "http:" && location.protocol !== "https:") {
@@ -129,5 +70,5 @@ if (boot) boot.remove();
 
 const canRegisterServiceWorker = "serviceWorker" in navigator && location.protocol !== "file:" && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1");
 if (canRegisterServiceWorker) {
-  navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch(() => {});
+  navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).catch(() => {});
 }
