@@ -4,12 +4,17 @@ export const methods = {
       // OPERAÇÕES: LOTES DE FRANGOS (MÓDULO 2)
       // OPERAÇÕES: MORTALIDADE / BAIXAS
       addMortality: function() {
+        this.mortalityLogs = this.mortalityLogs || [];
         var lote = this.lotes.find(l => l.id === this.newMortLoteId) || this.getActiveLote();
         if (!lote) {
           this.toast('Selecione um lote para registar a mortalidade.', 'error');
           return;
         }
         var qty = Number(this.newMortQty) || 1;
+        if (qty <= 0) {
+          this.toast('Indique uma quantidade válida de aves mortas.', 'error');
+          return;
+        }
         var remaining = this.getLoteRemainingBirds(lote);
         if (qty > remaining) {
           this.toast('Quantidade superior ao total de frangos restantes (' + remaining + ').', 'error');
@@ -32,6 +37,78 @@ export const methods = {
         this.runAiDiagnostics();
         this.toast('Mortalidade de ' + qty + ' aves registada no ' + lote.code);
         this.newMortQty = 1;
+      },
+      startEditMortality: function(record) {
+        if (!record) return;
+        this.editingMortality = record;
+        this.newMortLoteId = record.loteId || '';
+        this.newMortDate = record.date || this.todayStr();
+        this.newMortQty = Number(record.qty) || 0;
+        this.newMortReason = record.reason || 'Normal / Maneio';
+      },
+      cancelMortalityEdit: function() {
+        this.editingMortality = null;
+        this.newMortLoteId = this.lotes && this.lotes.length ? this.lotes[0].id : '';
+        this.newMortDate = this.todayStr();
+        this.newMortQty = 1;
+        this.newMortReason = 'Normal / Maneio';
+      },
+      saveMortalityEdit: function() {
+        if (!this.editingMortality) return this.addMortality();
+        this.mortalityLogs = this.mortalityLogs || [];
+        var lote = this.lotes.find(l => l.id === this.newMortLoteId) || this.getActiveLote();
+        if (!lote) {
+          this.toast('Selecione um lote para actualizar a mortalidade.', 'error');
+          return;
+        }
+        var currentQty = Number(this.editingMortality.qty) || 0;
+        var qty = Number(this.newMortQty) || 0;
+        if (qty <= 0) {
+          this.toast('Indique uma quantidade válida de aves mortas.', 'error');
+          return;
+        }
+        var otherDeaths = this.mortalityLogs
+          .filter(m => m.id !== this.editingMortality.id && m.loteId === lote.id)
+          .reduce((sum, m) => sum + (Number(m.qty) || 0), 0);
+        var soldBirds = this.getLoteSoldBirds(lote.id);
+        var maxAllowed = Math.max(0, (Number(lote.initialBirds) || 0) - soldBirds - otherDeaths);
+        if (qty > maxAllowed) {
+          this.toast('A quantidade ajustada excede o total disponível do lote (' + maxAllowed + ' aves).', 'error');
+          return;
+        }
+
+        this.mortalityLogs = this.mortalityLogs.map(function(m) {
+          if (m.id !== this.editingMortality.id) return m;
+          return Object.assign({}, m, {
+            loteId: lote.id,
+            loteCode: lote.code,
+            date: this.newMortDate || this.todayStr(),
+            qty: qty,
+            reason: this.newMortReason || 'Normal / Maneio',
+            recordedBy: this.currentUser ? this.currentUser.nome : 'Sistema',
+            updatedAt: new Date().toISOString()
+          });
+        }.bind(this));
+
+        this.logAudit('EDIÇÃO_MORTALIDADE', 'Actualizou mortalidade do lote ' + lote.code + ' de ' + currentQty + ' para ' + qty + ' aves.');
+        this.persistFarm();
+        this.runAiDiagnostics();
+        this.toast('Registo de mortalidade actualizado com sucesso.');
+        this.cancelMortalityEdit();
+      },
+      deleteMortality: function(record) {
+        if (!record) return;
+        var self = this;
+        this.confirm('Tem a certeza que deseja apagar este registo de mortalidade do lote ' + (record.loteCode || 'selecionado') + ' (' + (record.qty || 0) + ' aves)?', function() {
+          self.mortalityLogs = (self.mortalityLogs || []).filter(function(m) { return m.id !== record.id; });
+          self.logAudit('APAGAR_MORTALIDADE', 'Eliminou o registo de mortalidade do lote ' + (record.loteCode || 'desconhecido') + ' com ' + (record.qty || 0) + ' aves.');
+          self.persistFarm();
+          self.runAiDiagnostics();
+          self.toast('Registo de mortalidade apagado com sucesso.', 'success');
+          if (self.editingMortality && self.editingMortality.id === record.id) {
+            self.cancelMortalityEdit();
+          }
+        });
       },
       // OPERAÇÕES: RAÇÃO & ALIMENTAÇÃO (MÓDULO 3)
       addFeedLog: function() {

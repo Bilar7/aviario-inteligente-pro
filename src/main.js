@@ -45,24 +45,41 @@ window.generateProfessionalAviarioPDF = generateProfessionalAviarioPDF;
 window.generateSaleInvoicePDF = generateSaleInvoicePDF;
 window.generateFinanceReportPDF = generateFinanceReportPDF;
 
-// PWA: mantém o pedido nativo de instalação e disponibiliza uma entrada visível no sistema.
+// PWA: mantém o pedido nativo de instalação, o botão visível e a instrução correta para iOS/Android/PC.
 let deferredInstallPrompt = null;
-const pwaStandalone = () => window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+const pwaStandalone = () => {
+  return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+};
+
 window.pwaInstallAvailable = false;
-window.pwaInstalled = pwaStandalone() || window.navigator.standalone === true;
+window.pwaInstalled = pwaStandalone();
+
+const notifyPwaState = function(detail) {
+  var payload = {
+    available: !!(detail && detail.available),
+    installed: !!(detail && detail.installed),
+    outcome: detail && detail.outcome ? detail.outcome : null
+  };
+  window.dispatchEvent(new CustomEvent("pwa-install-available", { detail: payload }));
+};
+
 window.addEventListener("beforeinstallprompt", (event) => {
   event.preventDefault();
   deferredInstallPrompt = event;
-  window.pwaInstallAvailable = true;
-  window.dispatchEvent(new CustomEvent("pwa-install-available", { detail: { available: true, installed: false } }));
+  if (!window.pwaInstalled) {
+    window.pwaInstallAvailable = true;
+    notifyPwaState({ available: true, installed: false });
+  }
 });
 
 window.installAviarioPWA = async function () {
   if (window.pwaInstalled || pwaStandalone()) {
     window.pwaInstalled = true;
-    window.dispatchEvent(new CustomEvent("pwa-install-available", { detail: { available: false, installed: true } }));
+    window.pwaInstallAvailable = false;
+    notifyPwaState({ available: false, installed: true });
     return true;
   }
+
   if (!deferredInstallPrompt) {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const isAndroid = /android/i.test(navigator.userAgent);
@@ -75,20 +92,30 @@ window.installAviarioPWA = async function () {
     }
     return false;
   }
-  deferredInstallPrompt.prompt();
-  const choice = await deferredInstallPrompt.userChoice;
-  deferredInstallPrompt = null;
-  window.pwaInstallAvailable = false;
-  if (choice && choice.outcome === "accepted") window.pwaInstalled = true;
-  window.dispatchEvent(new CustomEvent("pwa-install-available", { detail: { available: false, outcome: choice && choice.outcome, installed: window.pwaInstalled } }));
-  return choice && choice.outcome === "accepted";
+
+  try {
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    window.pwaInstallAvailable = false;
+    if (choice && choice.outcome === "accepted") {
+      window.pwaInstalled = true;
+    }
+    notifyPwaState({ available: false, outcome: choice && choice.outcome, installed: window.pwaInstalled });
+    return choice && choice.outcome === "accepted";
+  } catch (err) {
+    deferredInstallPrompt = null;
+    window.pwaInstallAvailable = false;
+    notifyPwaState({ available: false, installed: false });
+    return false;
+  }
 };
 
 window.addEventListener("appinstalled", () => {
   deferredInstallPrompt = null;
   window.pwaInstallAvailable = false;
   window.pwaInstalled = true;
-  window.dispatchEvent(new CustomEvent("pwa-install-available", { detail: { available: false, installed: true } }));
+  notifyPwaState({ available: false, installed: true });
 });
 
 if (location.protocol !== "http:" && location.protocol !== "https:") {
@@ -100,6 +127,7 @@ Alpine.start();
 const boot = document.getElementById("boot-screen");
 if (boot) boot.remove();
 
-if ("serviceWorker" in navigator && import.meta.env.PROD) {
-  navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" }).catch(() => {});
+const canRegisterServiceWorker = "serviceWorker" in navigator && location.protocol !== "file:" && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1");
+if (canRegisterServiceWorker) {
+  navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch(() => {});
 }

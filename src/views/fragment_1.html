@@ -300,27 +300,6 @@
 <template x-if="!currentUser">
   <div class="auth-page-bg">
 
-    <!-- Instalação PWA: o navegador abre esta sugestão automaticamente quando a PWA está pronta.
-         O único clique é o de confirmação exigido pelo navegador; não é necessário procurar Definições. -->
-    <div x-data="{ pwaPromptOpen:false, pwaIos:false }"
-         x-init="pwaIos=/iphone|ipad|ipod/i.test(navigator.userAgent) && !window.pwaInstalled; if(pwaIos) setTimeout(()=>pwaPromptOpen=true,700);"
-         @pwa-install-available.window="if($event.detail.available && !window.pwaInstalled) pwaPromptOpen=true"
-         @appinstalled.window="pwaPromptOpen=false"
-         x-show="pwaPromptOpen && !window.pwaInstalled" x-cloak
-         class="pwa-install-overlay" role="dialog" aria-modal="true" aria-labelledby="pwa-install-title">
-      <div class="pwa-install-card">
-        <button type="button" class="pwa-install-close" @click="pwaPromptOpen=false" aria-label="Fechar">×</button>
-        <img src="./assets/icon-192.png" alt="Aviário Inteligente Pro" class="pwa-install-logo">
-        <div class="pwa-install-kicker">AVIÁRIO INTELIGENTE PRO</div>
-        <h2 id="pwa-install-title">Instalar como aplicação</h2>
-        <p x-show="!pwaIos">Tenha o Aviário Inteligente Pro no seu dispositivo, com acesso directo pelo ícone da aplicação.</p>
-        <p x-show="pwaIos">No iPhone/iPad, toque em <strong>Partilhar</strong> e depois em <strong>Adicionar ao Ecrã Principal</strong>.</p>
-        <button x-show="!pwaIos" type="button" class="pwa-install-primary" @click="window.installAviarioPWA()">Instalar agora</button>
-        <button x-show="pwaIos" type="button" class="pwa-install-primary" @click="pwaPromptOpen=false">Entendi</button>
-        <small x-show="!pwaIos">A instalação é confirmada pelo navegador. Não é preciso abrir as Definições.</small>
-      </div>
-    </div>
-    
     <!-- Botão Flutuante de Alternador Claro / Escuro -->
     <button type="button" class="icon-tooltip theme-toggle-icon-btn" @click="toggleTheme()" :data-tooltip="darkMode ? 'Modo claro' : 'Modo escuro'" :aria-label="darkMode ? 'Modo claro' : 'Modo escuro'" :title="darkMode ? 'Modo claro' : 'Modo escuro'">
       <span class="theme-toggle-icon" x-html="darkMode ? getIcon('sun') : getIcon('moon')"></span>

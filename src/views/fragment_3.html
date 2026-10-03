@@ -20,7 +20,7 @@
             <!-- Formulário: Registar Mortalidade Diária no Lote -->
             <div class="card p-4 space-y-3 border-l-4 border-l-red-500">
               <p class="label text-red-400"> Registar Mortes no Lote</p>
-              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5">
                 <div>
                   <label class="label block mb-1">Selecione o Lote</label>
                   <select class="input text-xs font-bold" x-model="newMortLoteId">
@@ -37,16 +37,43 @@
                   <label class="label block mb-1">Frangos Mortos</label>
                   <input type="number" min="1" class="input text-xs font-mono font-bold text-red-400" placeholder="Ex: 2" x-model="newMortQty">
                 </div>
-                <div class="flex items-end">
-                  <button type="button" class="btn btn-sm w-full text-xs font-bold !bg-red-600 !text-white hover:!bg-red-700 h-[38px]" @click="addMortality()">
-                    Registar Mortes
+                <div>
+                  <label class="label block mb-1">Motivo</label>
+                  <input type="text" class="input text-xs" x-model="newMortReason" placeholder="Ex: Lesão / Pneumonia / Normal">
+                </div>
+                <div class="flex items-end gap-2">
+                  <button type="button" class="btn btn-sm w-full text-xs font-bold !bg-red-600 !text-white hover:!bg-red-700 h-[38px]" @click="editingMortality ? saveMortalityEdit() : addMortality()">
+                    <span x-text="editingMortality ? 'Guardar edição' : 'Registar Mortes'"></span>
+                  </button>
+                  <button x-show="editingMortality" type="button" class="btn btn-sm w-full text-xs font-bold !bg-slate-600 !text-white hover:!bg-slate-700 h-[38px]" @click="cancelMortalityEdit()">
+                    Cancelar
                   </button>
                 </div>
               </div>
             </div>
 
+            <div class="card p-4 space-y-3">
+              <div class="flex items-center justify-between gap-2">
+                <p class="label text-red-400">Histórico de Mortalidade</p>
+                <button x-show="editingMortality" type="button" class="text-[11px] font-bold text-red-300 hover:text-red-200" @click="cancelMortalityEdit()">Cancelar edição</button>
+              </div>
+              <div class="space-y-2">
+                <template x-for="m in (mortalityLogs || [])" :key="m.id">
+                  <div class="card-2 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                      <p class="font-bold text-xs sm:text-sm" x-text="(m.loteCode || 'Lote') + ' · ' + m.qty + ' aves'"></p>
+                      <p class="text-[11px] text-[var(--text-dim)]" x-text="(m.date || '—') + ' · ' + (m.reason || '—')"></p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button type="button" class="btn btn-ghost btn-sm text-[10px] font-bold !border-blue-500/30 !text-blue-300" @click="startEditMortality(m)">Editar</button>
+                      <button type="button" class="btn btn-ghost btn-sm text-[10px] font-bold !border-red-500/30 !text-red-300" @click="deleteMortality(m)">Apagar</button>
+                    </div>
+                  </div>
+                </template>
+                <p x-show="!(mortalityLogs && mortalityLogs.length)" class="text-xs text-[var(--text-dim)] p-4 text-center">Nenhum registo de mortalidade efetuado.</p>
+              </div>
+            </div>
 
-            
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <template x-for="l in lotes.filter(item => (loteStatusFilter==='all' || item.status===loteStatusFilter) && (!loteSearch || item.code.toLowerCase().includes(loteSearch.toLowerCase()) || item.breed.toLowerCase().includes(loteSearch.toLowerCase())))" :key="l.id">
                 <article class="card p-4 sm:p-5 space-y-3 hover:border-[var(--primary)] transition-all shadow-xl">
