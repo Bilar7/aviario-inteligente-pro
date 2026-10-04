@@ -65,8 +65,8 @@
                       <p class="text-[11px] text-[var(--text-dim)]" x-text="(m.date || '—') + ' · ' + (m.reason || '—')"></p>
                     </div>
                     <div class="flex items-center gap-2">
-                      <button type="button" class="btn btn-ghost btn-sm text-[10px] font-bold !border-blue-500/30 !text-blue-300" @click="startEditMortality(m)">Editar</button>
-                      <button type="button" class="btn btn-ghost btn-sm text-[10px] font-bold !border-red-500/30 !text-red-300" @click="deleteMortality(m)">Apagar</button>
+                      <button type="button" class="btn btn-ghost btn-sm !border-blue-500/30 !text-blue-300" @click="startEditMortality(m)" title="Editar mortalidade" aria-label="Editar mortalidade"><span x-html="getIcon('edit')"></span></button>
+                      <button type="button" class="btn btn-ghost btn-sm !border-red-500/30 !text-red-300" @click="deleteMortality(m)" title="Apagar mortalidade" aria-label="Apagar mortalidade"><span x-html="getIcon('trash')"></span></button>
                     </div>
                   </div>
                 </template>
@@ -321,7 +321,7 @@
                     <div>
                       <p class="font-bold text-xs sm:text-sm" x-text="s.qty + ' frangos · ' + s.clientName"></p>
                       <p class="text-[11px] text-[var(--text-dim)]" x-text="s.date + ' · ' + s.loteCode + ' · Total: ' + fmtMT(s.totalAmount) + ' · Pago: ' + fmtMT(s.paidAmount) + ' · ' + (s.paymentMethod || 'Método não indicado')"></p>
-                      <div class="flex flex-wrap gap-2 mt-2"><button type="button" class="btn btn-ghost btn-sm text-[11px] font-bold" @click="openSaleInvoice(s)"><span x-html="getIcon('receipt')"></span> Emitir factura</button><button type="button" x-show="_isAdminRole()" class="btn btn-ghost btn-sm text-[11px] font-bold text-red-400" @click="deleteSaleWithAudit(s)">Apagar</button></div>
+                      <div class="flex flex-wrap gap-2 mt-2"><button type="button" class="btn btn-ghost btn-sm text-[11px] font-bold" @click="openSaleInvoice(s)" title="Emitir factura"><span x-html="getIcon('receipt')"></span> Emitir factura</button><button type="button" x-show="_isAdminRole()" class="btn btn-ghost btn-sm text-red-400" @click="deleteSaleWithAudit(s)" title="Apagar venda" aria-label="Apagar venda"><span x-html="getIcon('trash')"></span></button></div>
                     </div>
                     <div class="flex items-center gap-2">
                       <span class="badge" :class="getSalePaymentSummary(s).debtAmount > 0 ? 'badge-warning' : 'badge-normal'" x-text="getSalePaymentSummary(s).debtAmount > 0 ? 'Dívida: ' + fmtMT(getSalePaymentSummary(s).debtAmount) : 'Pago Integral'"></span>

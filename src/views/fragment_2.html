@@ -77,13 +77,14 @@
         </a>
 
         <div class="relative pt-1">
-          <button x-show="isAdmin()" type="button" class="navlink w-full" @click="moreOpen=!moreOpen" :aria-expanded="moreOpen">
+          <button x-show="canAccessView('relatorios')" type="button" class="navlink w-full" @click="moreOpen=!moreOpen" :aria-expanded="moreOpen">
             <span x-html="getIcon('more')"></span> <span>Mais</span>
           </button>
           <div x-show="moreOpen" x-transition x-cloak class="mt-1 ml-2 pl-2 border-l border-[var(--border-color)] space-y-1">
             <a x-show="canAccessView('despesas')" href="#" class="navlink" :class="view==='despesas' && 'active'" @click.prevent="goTo('despesas'); moreOpen=false"><span x-html="getIcon('despesas')"></span><span>Energia & Despesas</span></a>
             <a x-show="canAccessView('planilha')" href="#" class="navlink" :class="view==='planilha' && 'active'" @click.prevent="goTo('planilha'); moreOpen=false"><span x-html="getIcon('planilha')"></span><span>Planilha Inteligente</span></a>
-            <a x-show="canAccessView('relatorios')" href="#" class="navlink" :class="view==='relatorios' && 'active'" @click.prevent="goTo('relatorios'); moreOpen=false"><span x-html="getIcon('relatorios')"></span><span>Relatórios & Fecho</span></a>
+            <a x-show="canAccessView('relatorios')" href="#" class="navlink" :class="view==='relatorios' && subTabRelatorios!=='arquivo' && 'active'" @click.prevent="goTo('relatorios','producao'); moreOpen=false"><span x-html="getIcon('relatorios')"></span><span>Relatórios & Fecho</span></a>
+            <a x-show="canAccessView('relatorios')" href="#" class="navlink" :class="view==='relatorios' && subTabRelatorios==='arquivo' && 'active'" @click.prevent="goTo('relatorios','arquivo'); moreOpen=false"><span x-html="getIcon('archive')"></span><span>Arquivo</span></a>
             <a x-show="canAccessView('configuracoes')" href="#" class="navlink" :class="view==='configuracoes' && 'active'" @click.prevent="goTo('configuracoes'); moreOpen=false"><span x-html="getIcon('configuracoes')"></span><span>Definições</span></a>
           </div>
         </div>

@@ -145,6 +145,7 @@ export const methods = {
     var period = this.archivePeriod || 'month';
     var selectedDate = this.archiveDate || this.todayStr();
     var typeFilter = this.archiveType || 'all';
+    var searchQuery = String(this.archiveSearch || '').trim().toLowerCase();
     var rows = [];
     var add = function(row) {
       var date = String(row.date || '');
@@ -153,6 +154,7 @@ export const methods = {
       if (period === 'month' && date.slice(0, 7) !== selectedDate.slice(0, 7)) return;
       if (period === 'year' && date.slice(0, 4) !== selectedDate.slice(0, 4)) return;
       if (typeFilter !== 'all' && row.type !== typeFilter) return;
+      if (searchQuery && [date,row.type,row.title,row.details,row.amountText].join(' ').toLowerCase().indexOf(searchQuery) === -1) return;
       row.date = date || '—';
       rows.push(row);
     };
@@ -197,7 +199,7 @@ export const methods = {
       add({id:'audit_'+entry.id,date:entry.date||entry.createdAt,time:entry.time||'',type:'Auditoria',title:entry.action||'Alteração',details:(entry.userName||entry.user||'Sistema')+' · '+(entry.details||''),amountText:Number(entry.amount)?this.fmtMT(entry.amount):'—'});
     }, this);
     (this.archivedRecords || []).forEach(function(entry) {
-      add({id:'deleted_'+entry.id,date:entry.date,time:entry.time||'',type:'Eliminação',title:(entry.type||'Registo')+' eliminado',details:(entry.description||'Registo removido')+' · Data original: '+(entry.originalDate||'—')+' · Por: '+(entry.deletedBy||'Sistema'),amountText:'—'});
+      add({id:'deleted_'+entry.id,archiveEventId:entry.id,date:entry.date,time:entry.time||'',type:'Eliminação',title:(entry.type||'Registo')+' eliminado',details:(entry.description||'Registo removido')+' · Data original: '+(entry.originalDate||'—')+' · Por: '+(entry.deletedBy||'Sistema'),amountText:'—'});
     });
     return rows.sort(function(a, b) {
       return String(b.date).localeCompare(String(a.date)) || String(b.time).localeCompare(String(a.time));
@@ -209,6 +211,21 @@ export const methods = {
     if (this.archivePeriod === 'day') return 'Dia ' + date;
     if (this.archivePeriod === 'year') return 'Ano ' + date.slice(0, 4);
     return 'Mês ' + date.slice(0, 7);
+  },
+    deleteArchivedRecord: function(entry) {
+      if (!entry || !entry.id) return;
+      if (!this.isSuperAdmin || !this.isSuperAdmin()) {
+        this.toast('Apenas o proprietário pode eliminar entradas do arquivo.', 'error');
+        return;
+      }
+      var self=this;
+      this.confirm('Eliminar permanentemente este evento do arquivo? Esta ação não pode ser anulada.',function(){
+        self.archivedRecords=(self.archivedRecords||[]).filter(function(item){return item.id!==entry.id;});
+        if(self._queueCloudDelete)self._queueCloudDelete(self.currentFarmId,'archiveEvents',entry.id);
+        self.logAudit('ELIMINAR_EVENTO_ARQUIVO','Proprietário eliminou evento arquivado do tipo '+(entry.type||'Registo'));
+        self.persistFarm();
+        self.toast('Evento removido permanentemente do arquivo.');
+      });
   },
   downloadOperationalArchivePDF: function() {
     var self = this;

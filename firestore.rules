@@ -145,7 +145,7 @@ service cloud.firestore {
           && (isAdmin() || me().data.roleType == 'employee')
           && request.resource.data.farmId == farmId
           && request.resource.data.createdByUid == request.auth.uid;
-        allow update, delete: if sameFarm(farmId) && isAdmin();
+        allow update, delete: if sameFarm(farmId) && isSuperAdmin();
       }
     }
   }

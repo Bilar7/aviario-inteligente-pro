@@ -18,6 +18,7 @@ export const state = {
   subTabConfiguracoes: 'aviario',
   archiveDate: new Date().toISOString().slice(0, 10),
   archivePeriod: 'month',
+  archiveSearch: '',
   archiveType: 'all',
   // Filtros e Pesquisas
       planilhaSearch: '',

@@ -328,8 +328,11 @@
                     <option value="Notificação">Notificações</option>
                     <option value="Auditoria">Auditoria</option>
                     <option value="Eliminação">Eliminações</option>
-                    <option value="Eliminação">Eliminações</option>
                   </select>
+                </div>
+                <div class="min-w-[190px] flex-1">
+                  <label class="label block mb-1">Pesquisar no arquivo</label>
+                  <input type="search" class="input text-xs" x-model="archiveSearch" placeholder="Data, tipo, registo ou detalhe">
                 </div>
                 <div class="flex items-center gap-3">
                   <p class="text-xs text-[var(--text-dim)]" x-text="getOperationalArchiveRows().length + ' registos encontrados'"></p>
@@ -338,8 +341,8 @@
               </div>
               <div class="card overflow-hidden">
                 <div class="overflow-x-auto">
-                  <table class="w-full min-w-[700px] text-xs text-left">
-                    <thead class="bg-[var(--surface-hover)] text-[var(--text-dim)]"><tr><th class="p-3">Data</th><th class="p-3">Tipo</th><th class="p-3">Registo</th><th class="p-3">Detalhes</th><th class="p-3 text-right">Valor</th></tr></thead>
+                  <table class="w-full min-w-[760px] text-xs text-left">
+                    <thead class="bg-[var(--surface-hover)] text-[var(--text-dim)]"><tr><th class="p-3">Data</th><th class="p-3">Tipo</th><th class="p-3">Registo</th><th class="p-3">Detalhes</th><th class="p-3 text-right">Valor</th><th class="p-3 text-center">Ações</th></tr></thead>
                     <tbody>
                       <template x-for="row in getOperationalArchiveRows()" :key="row.id">
                         <tr class="border-t border-[var(--border-color)]/50">
@@ -348,6 +351,7 @@
                           <td class="p-3 font-semibold" x-text="row.title"></td>
                           <td class="p-3 text-[var(--text-dim)]" x-text="row.details"></td>
                           <td class="p-3 text-right font-mono" x-text="row.amountText"></td>
+                          <td class="p-3 text-center"><button x-show="row.archiveEventId && isSuperAdmin()" type="button" class="btn btn-ghost btn-sm text-red-400" @click="deleteArchivedRecord((archivedRecords||[]).find(event => event.id === row.archiveEventId))" title="Eliminar evento do arquivo" aria-label="Eliminar evento do arquivo"><span x-html="getIcon('trash')"></span></button></td>
                         </tr>
                       </template>
                     </tbody>
