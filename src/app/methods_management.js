@@ -27,14 +27,39 @@ export const methods = {
     if (record.cost > 0) {
       if (!Array.isArray(this.expenses)) this.expenses = [];
       var expId = 'e_health_' + Date.now().toString(36);
+      var cashId = 'csh_health_' + Date.now().toString(36);
+      record.expenseId = expId;
+      record.cashEntryId = cashId;
       if (!Array.isArray(this.cashLogs)) this.cashLogs = [];
       this.expenses.unshift({id:expId,loteId:lote.id,loteCode:lote.code,category:'Medicamentos & Vacinas',description:record.type+' — '+record.product+' ('+lote.code+')',amount:record.cost,date:record.date,paymentMethod:'Dinheiro',supplier:'',responsible:record.recordedBy});
-      this.cashLogs.unshift({id:'csh_'+Date.now().toString(36),date:record.date,time:new Date().toTimeString().slice(0,5),type:'OUT',category:'Medicamentos & Vacinas',description:record.type+' — '+record.product+' ('+lote.code+')',amount:record.cost,paymentMethod:'Dinheiro',responsible:record.recordedBy,referenceId:expId});
+      this.cashLogs.unshift({id:cashId,date:record.date,time:new Date().toTimeString().slice(0,5),type:'OUT',category:'Medicamentos & Vacinas',description:record.type+' — '+record.product+' ('+lote.code+')',amount:record.cost,paymentMethod:'Dinheiro',responsible:record.recordedBy,referenceId:expId});
     }
     this.persistFarm();
     this.showHealthModal = false;
     this.toast(record.type + ' registada no lote ' + lote.code + '.');
     this.runAiDiagnostics();
+  },
+  deleteHealthLog: function(record) {
+    if (!record) return;
+    var role=this.currentUser&&(this.currentUser.roleType||this.currentUser.role);
+    if (role!=='admin'&&role!=='super_admin'&&role!=='employee') { this.toast('Não tem permissão para apagar registos de saúde.', 'error'); return; }
+    var self=this;
+    this.confirm('Apagar o registo de '+(record.type||'saúde')+' — '+(record.product||'tratamento')+'?',function(){
+      self.archiveDeletedRecord('Saúde',record,'Registo de saúde eliminado');
+      var description=(record.type||'Tratamento')+' — '+(record.product||'')+' ('+(record.loteCode||'')+')';
+      var linkedExpense=(self.expenses||[]).find(function(expense){return expense.id===record.expenseId||(expense.category==='Medicamentos & Vacinas'&&expense.date===record.date&&expense.description===description);});
+      var expenseId=linkedExpense?linkedExpense.id:record.expenseId;
+      self.healthLogs=(self.healthLogs||[]).filter(function(item){return item.id!==record.id;});
+      if(expenseId){
+        if(self._queueCloudDelete)self._queueCloudDelete(self.currentFarmId,'expenses',expenseId);
+        (self.cashLogs||[]).filter(function(item){return item.id===record.cashEntryId||item.referenceId===expenseId;}).forEach(function(item){if(self._queueCloudDelete)self._queueCloudDelete(self.currentFarmId,'cashEntries',item.id);});
+        self.expenses=(self.expenses||[]).filter(function(item){return item.id!==expenseId;});
+        self.cashLogs=(self.cashLogs||[]).filter(function(item){return item.id!==record.cashEntryId&&item.referenceId!==expenseId;});
+      }
+      self.persistFarm();
+      self.runAiDiagnostics();
+      self.toast('Registo de saúde eliminado e arquivado.');
+    });
   },
   getDailyAgenda: function() {
     var today = this.todayStr(), items = [];

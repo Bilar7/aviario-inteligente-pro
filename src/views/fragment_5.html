@@ -26,6 +26,7 @@
                       <th class="p-3">Forma Pagto</th>
                       <th class="p-3">Estado</th>
                       <th class="p-3 font-mono text-right text-red-400">Valor (MT)</th>
+                      <th class="p-3 text-center">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -39,6 +40,7 @@
                           <span class="badge text-[10px] font-bold" :class="e.status==='Pago' ? 'badge-normal' : 'badge-danger'" x-text="e.status"></span>
                         </td>
                         <td class="p-3 font-mono font-bold text-right text-red-400" x-text="fmtMT(e.amount)"></td>
+                        <td class="p-3 text-center"><div class="flex justify-center gap-1"><button type="button" class="btn btn-ghost btn-sm" @click="startEditExpense(e)" title="Editar despesa" aria-label="Editar despesa"><span x-html="getIcon('edit')"></span></button><button type="button" class="btn btn-ghost btn-sm text-red-400" @click="deleteExpense(e)" title="Apagar e arquivar" aria-label="Apagar e arquivar"><span x-html="getIcon('trash')"></span></button></div></td>
                       </tr>
                     </template>
                   </tbody>
@@ -278,9 +280,9 @@
             </div>
 
             <div class="card p-4 space-y-3">
-              <p class="label">Lista de Clientes & Contas Correntes</p>
+              <p class="label">Clientes com Dívida Pendente</p>
               <div class="space-y-2.5">
-                <template x-for="c in clients" :key="c.id">
+                <template x-for="c in (clients||[]).filter(client => (Number(client.debt)||0) > 0)" :key="c.id">
                   <div class="card-2 p-3.5 flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p class="font-bold text-sm" x-text="c.name"></p>
@@ -302,7 +304,7 @@
                     </div>
                   </div>
                 </template>
-                <p x-show="clients.length===0" class="text-xs text-[var(--text-dim)] p-4 text-center">Nenhum cliente registado.</p>
+                <p x-show="(clients||[]).filter(client => (Number(client.debt)||0) > 0).length===0" class="text-xs text-[var(--text-dim)] p-4 text-center">Não existem clientes com dívida pendente.</p>
               </div>
             </div>
 
@@ -368,6 +370,16 @@
               <div class="space-y-2.5"><template x-for="stf in getVisibleTeamMembers()" :key="stf.id"><div class="card-2 p-3.5 flex flex-wrap items-center justify-between gap-3"><div><div class="flex flex-wrap items-center gap-2"><p class="font-bold text-sm" x-text="stf.name || stf.nome"></p><span class="badge text-[9px]" :class="userRoleBadge(stf.roleType).class" x-text="userRoleBadge(stf.roleType).label"></span></div><p class="text-xs text-[var(--text-dim)]" x-text="(stf.email ? ' · ' + stf.email : '') + (stf.telefone ? ' · ' + stf.telefone : '') + (isAdmin() && stf.salary ? ' · Salário: ' + fmtMT(stf.salary) : '')"></p></div><div class="flex flex-wrap items-center gap-2"><button type="button" class="action-btn" x-show="isAdmin() && (isSuperAdmin() || (hasRole('admin') && stf.roleType !== 'admin' && stf.roleType !== 'super_admin'))" @click="editStaffAccess(stf)" title="Gerir conta"><span x-html="getIcon('edit')"></span></button><button type="button" class="action-btn" x-show="isAdmin() && lastGeneratedAccess && ((lastGeneratedAccess.uid && lastGeneratedAccess.uid === stf.uid) || (lastGeneratedAccess.email && lastGeneratedAccess.email === stf.email))" @click="showFirstAccess(stf)" title="Ver primeiro acesso"><span x-html="getIcon('eye')"></span></button><button type="button" class="action-btn" x-show="isAdmin()" @click="shareCredentials(stf)" title="Partilhar acesso"><span x-html="getIcon('share')"></span></button><button type="button" class="action-btn" @click="logAttendance(currentUser && ((currentUser._authUid || currentUser.uid) === (stf._authUid || stf.uid)) ? currentUser : stf, 'presente')" title="Registar presença"><span x-html="getIcon('check')"></span></button><button type="button" class="action-btn" x-show="isAdmin()" @click="openSalaryPayment(stf)" title="Registar pagamento"><span x-html="getIcon('caixa')"></span></button></div></div></template><p x-show="getVisibleTeamMembers().length===0" class="text-xs text-[var(--text-dim)] p-4 text-center">Nenhum registo de equipa disponível.</p></div>
               <p x-show="!isAdmin()" class="text-[10px] text-[var(--text-dim)]">Os restantes colaboradores permanecem privados. Pode editar os seus próprios dados e palavra-passe em <strong>Editar meu perfil</strong>.</p>
             </div>
+            <div x-show="isAdmin()" class="card p-4 space-y-3">
+              <p class="label">Histórico de Presenças</p>
+              <template x-for="attendanceRecord in (attendance||[])" :key="attendanceRecord.id">
+                <div class="card-2 p-3 flex items-center justify-between gap-2">
+                  <div><p class="font-bold text-xs" x-text="attendanceRecord.staffName + ' · ' + attendanceRecord.date"></p><p class="text-[11px] text-[var(--text-dim)]" x-text="(attendanceRecord.status||'Registada') + (attendanceRecord.checkIn ? ' · Entrada ' + attendanceRecord.checkIn : '') + (attendanceRecord.checkOut ? ' · Saída ' + attendanceRecord.checkOut : '')"></p></div>
+                  <button type="button" class="btn btn-ghost btn-sm text-red-400" @click="deleteAttendanceRecord(attendanceRecord)" title="Apagar presença" aria-label="Apagar presença"><span x-html="getIcon('trash')"></span></button>
+                </div>
+              </template>
+              <p x-show="!(attendance||[]).length" class="text-xs text-[var(--text-dim)]">Nenhuma presença registada.</p>
+            </div>
           </div>
         </template>
 
@@ -415,11 +427,27 @@
             </div>
 
             <div class="card p-4 space-y-3">
+              <p class="label">Histórico de Leituras de Energia</p>
+              <template x-for="energy in (energyLogs||[])" :key="energy.id">
+                <div class="card-2 p-3 flex items-center justify-between gap-2">
+                  <div><p class="font-bold text-xs" x-text="energy.date + ' · ' + (Number(energy.consumptionKwh)||0) + ' kWh'"></p><p class="text-[11px] text-[var(--text-dim)]" x-text="(energy.prevReading||0) + ' → ' + (energy.currReading||0) + ' · Total: ' + fmtMT(energy.totalAmount)"></p></div>
+                  <button type="button" x-show="_isAdminRole()" class="btn btn-ghost btn-sm text-red-400" @click="deleteEnergyLog(energy)" title="Apagar leitura de energia" aria-label="Apagar leitura de energia"><span x-html="getIcon('trash')"></span></button>
+                </div>
+              </template>
+              <p x-show="!(energyLogs||[]).length" class="text-xs text-[var(--text-dim)]">Nenhuma leitura de energia registada.</p>
+            </div>
+
+            <div class="card p-4 space-y-3">
               <p class="label text-[var(--primary-light)]"> Lançar Despesa Geral (Água, Vacinas, Manutenção, etc.)</p>
               <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
                 <select class="input text-xs" x-model="newExpCategory">
+                  <option value="Medicamentos & Vacinas">Medicamentos & Vitaminas</option>
                   <option value="Medicamentos">Medicamentos & Vitaminas</option>
                   <option value="Vacinas">Vacinas</option>
+                  <option value="Ração">Ração</option>
+                  <option value="Compra de Ração">Compra de Ração</option>
+                  <option value="Energia (EDM Credelec)">Energia (EDM Credelec)</option>
+                  <option value="Energia Elétrica">Energia Elétrica</option>
                   <option value="Água">Água & Bombeamento</option>
                   <option value="Transporte">Transporte / Combustível</option>
                   <option value="Maravalha / Cama">Maravalha / Cama do Aviário</option>
@@ -428,7 +456,10 @@
                 </select>
                 <input type="text" class="input text-xs" placeholder="Descrição do gasto" x-model="newExpDesc">
                 <input type="number" min="0" class="input text-xs font-mono" placeholder="Valor MT" x-model="newExpAmount">
-                <button type="button" class="btn btn-primary text-xs font-bold" @click="addExpense()">Lançar Despesa</button>
+                <div class="flex gap-2">
+                  <button type="button" class="btn btn-primary text-xs font-bold" @click="editingExpense ? saveExpenseEdit() : addExpense()"><span x-text="editingExpense ? 'Guardar edição' : 'Lançar Despesa'"></span></button>
+                  <button x-show="editingExpense" type="button" class="btn btn-ghost text-xs" @click="cancelExpenseEdit()">Cancelar</button>
+                </div>
               </div>
             </div>
 
@@ -436,12 +467,16 @@
               <p class="label">Histórico de Despesas Operacionais</p>
               <div class="space-y-2">
                 <template x-for="e in expenses" :key="e.id">
-                  <div class="card-2 p-3 flex items-center justify-between">
+                  <div class="card-2 p-3 flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <p class="font-bold text-xs sm:text-sm" x-text="e.category + ' — ' + e.description"></p>
+                      <p class="font-bold text-xs sm:text-sm" x-text="e.category + ' — ' + (e.description || e.desc || 'Despesa')"></p>
                       <p class="text-[11px] text-[var(--text-dim)]" x-text="e.date + ' · ' + e.loteCode"></p>
                     </div>
-                    <p class="font-mono font-bold text-sm text-red-400" x-text="'- ' + fmtMT(e.amount)"></p>
+                    <div class="flex items-center gap-1.5">
+                      <p class="font-mono font-bold text-sm text-red-400" x-text="'- ' + fmtMT(e.amount)"></p>
+                      <button type="button" x-show="_isAdminRole()" class="btn btn-ghost btn-sm" @click="startEditExpense(e)" title="Editar despesa" aria-label="Editar despesa"><span x-html="getIcon('edit')"></span></button>
+                      <button type="button" x-show="_isAdminRole()" class="btn btn-ghost btn-sm text-red-400" @click="deleteExpense(e)" title="Apagar despesa" aria-label="Apagar despesa"><span x-html="getIcon('trash')"></span></button>
+                    </div>
                   </div>
                 </template>
                 <p x-show="expenses.length===0" class="text-xs text-[var(--text-dim)] p-4 text-center">Nenhuma despesa registada.</p>

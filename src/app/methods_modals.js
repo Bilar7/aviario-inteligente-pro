@@ -212,6 +212,25 @@ export const methods = {
           return;
         }
         val = Math.min(val, Number(client.debt || 0));
+
+        var remainingToAllocate = val;
+        var allocations = [];
+        var outstandingSales = (this.sales || []).filter(function(sale) {
+          return sale.clientId === client.id && Number(sale.debtAmount) > 0;
+        }).slice().sort(function(a, b) {
+          return String(a.date || '').localeCompare(String(b.date || '')) || String(a.time || '').localeCompare(String(b.time || ''));
+        });
+        outstandingSales.forEach(function(sale) {
+          if (remainingToAllocate <= 0) return;
+          var saleDebt = this.getSalePaymentSummary
+            ? this.getSalePaymentSummary(sale).debtAmount
+            : Number(sale.debtAmount) || 0;
+          var allocated = Math.min(remainingToAllocate, saleDebt);
+          if (allocated > 0) {
+            allocations.push({ saleId: sale.id, amount: allocated });
+            remainingToAllocate -= allocated;
+          }
+        }, this);
         
         client.totalPaid = (client.totalPaid || 0) + val;
         client.debt = Math.max(0, (client.debt || 0) - val);
@@ -225,6 +244,7 @@ export const methods = {
           date: this.newPayDate || this.todayStr(),
           time: new Date().toTimeString().slice(0, 5),
           amount: val,
+          allocations: allocations,
           paymentMethod: this.newPayMethod || 'M-Pesa',
           status: 'paid',
           responsible: this.currentUser ? this.currentUser.nome : 'Sistema',

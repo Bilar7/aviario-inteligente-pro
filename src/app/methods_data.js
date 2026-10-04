@@ -30,6 +30,7 @@ export const methods = {
         if (Array.isArray(data.cashEntries)) this.cashLogs = data.cashEntries;
         if (Array.isArray(data.financialAudits)) this.financialAudits = data.financialAudits;
       }
+      if (Array.isArray(data.archivedRecords)) this.archivedRecords = data.archivedRecords;
     } catch (e) {}
   },
 
@@ -41,7 +42,8 @@ export const methods = {
         receipts: this.receipts || [],
         expenses: this._isAdminRole() ? (this.expenses || []) : [],
         cashEntries: this._isAdminRole() ? (this.cashLogs || []) : [],
-        financialAudits: this._isAdminRole() ? (this.financialAudits || []) : []
+        financialAudits: this._isAdminRole() ? (this.financialAudits || []) : [],
+        archivedRecords: this.archivedRecords || []
       }));
     } catch (e) {}
   },
@@ -88,12 +90,63 @@ export const methods = {
       id: id,
       collection: collectionName,
       data: Object.assign({}, item, { farmId: farmId }),
+      delete: false,
       queuedAt: Date.now()
     };
     if (existing) Object.assign(existing, operation);
     else this._cloudOutbox.push(operation);
     this._saveOutbox(farmId);
     this._flushCloudOutbox(farmId).catch(function(){});
+  },
+
+  archiveDeletedRecord: function(type, record, description) {
+    if (!record) return null;
+    var now = new Date();
+    var user = this.currentUser || {};
+    var event = {
+      id: 'archive_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7),
+      type: String(type || 'Registo'),
+      recordId: String(record.id || ''),
+      date: now.toISOString().slice(0, 10),
+      time: now.toTimeString().slice(0, 8),
+      originalDate: record.date || record.entryDate || '',
+      description: String(description || 'Registo eliminado'),
+      deletedBy: String(user.nome || user.name || 'Sistema'),
+      createdByUid: String(user._authUid || user.uid || ''),
+      farmId: this.currentFarmId || 'farm_principal'
+    };
+    if (!Array.isArray(this.archivedRecords)) this.archivedRecords = [];
+    this.archivedRecords.unshift(event);
+    if (this._queueCloudMutation) this._queueCloudMutation(event.farmId, 'archiveEvents', event);
+    return event;
+  },
+
+  _queueCloudDelete: function(farmId, collectionName, itemId) {
+    if (!farmId || !collectionName || !itemId) return;
+    this._loadOutbox(farmId);
+    var id = String(itemId);
+    var existing = this._cloudOutbox.find(function(op) {
+      return op && op.collection === collectionName && String(op.id) === id;
+    });
+    var operation = { id: id, collection: collectionName, data: null, delete: true, queuedAt: Date.now() };
+    if (existing) Object.assign(existing, operation);
+    else this._cloudOutbox.push(operation);
+    this._saveOutbox(farmId);
+    this._flushCloudOutbox(farmId).catch(function(){});
+  },
+
+  _mergePendingCollection: function(farmId, collectionName, remoteRows) {
+    this._loadOutbox(farmId);
+    var operations = (this._cloudOutbox || []).filter(function(op) { return op && op.collection === collectionName; });
+    var deletedIds = new Set(operations.filter(function(op) { return op.delete; }).map(function(op) { return String(op.id); }));
+    var merged = new Map();
+    (remoteRows || []).forEach(function(row) {
+      if (row && row.id != null && !deletedIds.has(String(row.id))) merged.set(String(row.id), row);
+    });
+    operations.forEach(function(op) {
+      if (op && !op.delete && op.data && op.id != null) merged.set(String(op.id), op.data);
+    });
+    return Array.from(merged.values());
   },
 
   _flushCloudOutbox: async function(farmId) {
@@ -112,8 +165,10 @@ export const methods = {
       var pending = this._cloudOutbox.slice();
       for (var i = 0; i < pending.length; i++) {
         var op = pending[i];
-        if (!op || !op.collection || !op.data) continue;
-        if (op.collection === '__farm_root__') {
+        if (!op || !op.collection || (!op.data && !op.delete)) continue;
+        if (op.delete) {
+          await db.collection('farms').doc(farmId).collection(op.collection).doc(String(op.id)).delete();
+        } else if (op.collection === '__farm_root__') {
           await db.collection('farms').doc(farmId).set(op.data, { merge: true });
         } else {
           if (!op.id) continue;
@@ -215,6 +270,7 @@ export const methods = {
 
   _loadSecureCollections: async function(farmId, cloudRoot) {
     var self = this;
+    this._loadOutbox(farmId);
     var staffRows = [];
     try { staffRows = await this._loadSubcollection(farmId, 'staff'); } catch (e) {}
     if (!staffRows.length && cloudRoot && Array.isArray(cloudRoot.staff)) staffRows = cloudRoot.staff;
@@ -222,11 +278,14 @@ export const methods = {
     var sales = [];
     try { sales = await this._loadSubcollection(farmId, 'sales'); } catch (e) { sales = []; }
     if (!sales.length && cloudRoot && Array.isArray(cloudRoot.sales)) sales = cloudRoot.sales;
-    this.sales = sales;
+    this.sales = this._mergePendingCollection(farmId, 'sales', sales);
     var receipts = [];
     try { receipts = await this._loadSubcollection(farmId, 'receipts'); } catch (e) { receipts = []; }
-    if (!receipts.length && this._cloudOutbox) receipts = (this._cloudOutbox || []).filter(function(op){ return op.collection === 'receipts'; }).map(function(op){ return op.data; });
-    this.receipts = receipts;
+    this.receipts = this._mergePendingCollection(farmId, 'receipts', receipts);
+
+    var archived = [];
+    try { archived = await this._loadSubcollection(farmId, 'archiveEvents'); } catch (e) { archived = []; }
+    this.archivedRecords = this._mergePendingCollection(farmId, 'archiveEvents', archived).sort(function(a, b) { return String(b.date || '').localeCompare(String(a.date || '')) || String(b.time || '').localeCompare(String(a.time || '')); });
 
     // Somente administradores consultam dados financeiros sensíveis.
     if (this._isAdminRole()) {
@@ -237,9 +296,9 @@ export const methods = {
       if (!expenses.length && cloudRoot && Array.isArray(cloudRoot.expenses)) expenses = cloudRoot.expenses;
       if (!cashEntries.length && cloudRoot && Array.isArray(cloudRoot.cashLogs)) cashEntries = cloudRoot.cashLogs;
       if (!audits.length && cloudRoot && Array.isArray(cloudRoot.financialAudits)) audits = cloudRoot.financialAudits;
-      this.expenses = expenses;
-      this.cashLogs = cashEntries;
-      this.financialAudits = audits;
+      this.expenses = this._mergePendingCollection(farmId, 'expenses', expenses);
+      this.cashLogs = this._mergePendingCollection(farmId, 'cashEntries', cashEntries);
+      this.financialAudits = this._mergePendingCollection(farmId, 'financialAudits', audits);
     } else {
       this.expenses = [];
       this.cashLogs = [];
@@ -429,33 +488,30 @@ export const methods = {
 
       this._farmUnsubscribes.push(db.collection('farms').doc(farmId).collection('sales').onSnapshot(function(snap) {
         var remote = (snap.docs || []).map(function(d) { return Object.assign({ id: d.id }, d.data() || {}); });
-        var pendingIds = new Set((self._cloudOutbox || []).filter(function(op){ return op.collection === 'sales'; }).map(function(op){ return String(op.id); }));
-        var localPending = (self.sales || []).filter(function(s){ return s && pendingIds.has(String(s.id)); });
-        var merged = new Map();
-        remote.forEach(function(s){ merged.set(String(s.id), s); });
-        localPending.forEach(function(s){ merged.set(String(s.id), s); });
-        self.sales = Array.from(merged.values());
+        self.sales = self._mergePendingCollection(farmId, 'sales', remote);
         self._isCloudSynced = true;
         self._loadOutbox(farmId);
       }, function(err) { self.cloudLastSyncError = self._friendlyCloudError(err); }));
 
       this._farmUnsubscribes.push(db.collection('farms').doc(farmId).collection('receipts').onSnapshot(function(snap) {
         var remote = (snap.docs || []).map(function(d) { return Object.assign({ id: d.id }, d.data() || {}); });
-        var pendingIds = new Set((self._cloudOutbox || []).filter(function(op){ return op.collection === 'receipts'; }).map(function(op){ return String(op.id); }));
-        var localPending = (self.receipts || []).filter(function(r){ return r && pendingIds.has(String(r.id)); });
-        var merged = new Map();
-        remote.forEach(function(r){ merged.set(String(r.id), r); });
-        localPending.forEach(function(r){ merged.set(String(r.id), r); });
-        self.receipts = Array.from(merged.values());
+        self.receipts = self._mergePendingCollection(farmId, 'receipts', remote);
+      }, function(err) { self.cloudLastSyncError = self._friendlyCloudError(err); }));
+
+      this._farmUnsubscribes.push(db.collection('farms').doc(farmId).collection('archiveEvents').onSnapshot(function(snap) {
+        var remote = (snap.docs || []).map(function(d) { return Object.assign({ id: d.id }, d.data() || {}); });
+        self.archivedRecords = self._mergePendingCollection(farmId, 'archiveEvents', remote).sort(function(a, b) { return String(b.date || '').localeCompare(String(a.date || '')) || String(b.time || '').localeCompare(String(a.time || '')); });
+        self._cacheSecureCollectionsLocal(farmId);
       }, function(err) { self.cloudLastSyncError = self._friendlyCloudError(err); }));
 
       if (this._isAdminRole()) {
         ['cashEntries', 'expenses', 'financialAudits'].forEach(function(name) {
           self._farmUnsubscribes.push(db.collection('farms').doc(farmId).collection(name).onSnapshot(function(snap) {
             var rows = (snap.docs || []).map(function(d) { return Object.assign({ id: d.id }, d.data() || {}); });
-            if (name === 'cashEntries') self.cashLogs = rows;
-            else if (name === 'expenses') self.expenses = rows;
-            else self.financialAudits = rows;
+            var merged = self._mergePendingCollection(farmId, name, rows);
+            if (name === 'cashEntries') self.cashLogs = merged;
+            else if (name === 'expenses') self.expenses = merged;
+            else self.financialAudits = merged;
           }, function(err) { self.cloudLastSyncError = self._friendlyCloudError(err); }));
         });
       }

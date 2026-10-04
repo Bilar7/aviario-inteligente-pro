@@ -6,7 +6,7 @@ import "./styles/components.css";
 import "./styles/utilities.css";
 import "./styles/responsive.css";
 import { createAppState } from "./app/store.js";
-import { exportSmartExcel, importSmartExcel, generateProfessionalAviarioPDF, generateSaleInvoicePDF, generateFinanceReportPDF } from "./services/exports.js";
+import { exportSmartExcel, importSmartExcel, generateProfessionalAviarioPDF, generateSaleInvoicePDF, generateFinanceReportPDF, generateOperationalArchivePDF } from "./services/exports.js";
 import "./services/firebase.js";
 import "./services/icons.js";
 import "./services/i18n.js";
@@ -44,18 +44,10 @@ window.importSmartExcel = importSmartExcel;
 window.generateProfessionalAviarioPDF = generateProfessionalAviarioPDF;
 window.generateSaleInvoicePDF = generateSaleInvoicePDF;
 window.generateFinanceReportPDF = generateFinanceReportPDF;
+window.generateOperationalArchivePDF = generateOperationalArchivePDF;
 
-// PWA: mantemos apenas o fluxo nativo do navegador para instalar como app.
-// Não há botão customizado nem conflitos com o prompt do sistema.
-const isStandalone = () => window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
-window.addEventListener('beforeinstallprompt', (event) => {
-  event.preventDefault();
-  window.deferredInstallPrompt = event;
-  window.pwaInstalled = !!(isStandalone() || window.navigator.standalone);
-});
-
+// Não interceptar beforeinstallprompt: o navegador controla a apresentação da instalação.
 window.addEventListener('appinstalled', () => {
-  window.deferredInstallPrompt = null;
   window.pwaInstalled = true;
 });
 

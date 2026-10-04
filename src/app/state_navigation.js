@@ -16,6 +16,9 @@ export const state = {
   subTabPlanilha: 'lotes',
   subTabRelatorios: 'producao',
   subTabConfiguracoes: 'aviario',
+  archiveDate: new Date().toISOString().slice(0, 10),
+  archivePeriod: 'month',
+  archiveType: 'all',
   // Filtros e Pesquisas
       planilhaSearch: '',
   planilhaSortCol: '',

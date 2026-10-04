@@ -100,10 +100,17 @@ export const methods = {
         var self = this;
         this.confirm('Tem a certeza que deseja anular/eliminar o movimento \"' + t.desc + '\" de ' + this.fmtMT(t.amount) + '?', function() {
           var ref = t.referenceId || (t.raw && t.raw.referenceId) || t.id;
+          var archived = false;
+          var rawEntry = t.raw || t;
+          if (rawEntry && rawEntry.id && !rawEntry.derived && self._queueCloudDelete) {
+            self._queueCloudDelete(self.currentFarmId, 'cashEntries', rawEntry.id);
+          }
           self.cashLogs = (self.cashLogs || []).filter(function(c) { return c.id !== t.id && c.referenceId !== ref; });
           if (ref) {
             var sale = (self.sales || []).find(function(s) { return s.id === ref; });
             if (sale) {
+              self.archiveDeletedRecord('Venda', sale, 'Venda eliminada a partir do Livro de Caixa');
+              if (self._queueCloudDelete) self._queueCloudDelete(self.currentFarmId, 'sales', sale.id);
               var client = (self.clients || []).find(function(c) { return c.id === sale.clientId; });
               if (client) {
                 client.totalBought = Math.max(0, Number(client.totalBought || 0) - Number(sale.totalAmount || 0));
@@ -111,9 +118,34 @@ export const methods = {
                 client.debt = Math.max(0, Number(client.debt || 0) - Number(sale.debtAmount || 0));
               }
               self.sales = self.sales.filter(function(s) { return s.id !== ref; });
+              archived = true;
+            }
+            var receipt = (self.receipts || []).find(function(item) { return item.id === ref; });
+            if (receipt) {
+              self.archiveDeletedRecord('Recebimento', receipt, 'Recebimento eliminado a partir do Livro de Caixa');
+              var receiptClient = (self.clients || []).find(function(c) { return c.id === receipt.clientId; });
+              if (receiptClient) {
+                var restoredDebt = Array.isArray(receipt.allocations)
+                  ? receipt.allocations.reduce(function(sum, allocation) {
+                    return sum + ((self.sales || []).some(function(item) { return String(item.id) === String(allocation.saleId); }) ? Number(allocation.amount) || 0 : 0);
+                  }, 0)
+                  : Number(receipt.amount) || 0;
+                receiptClient.totalPaid = Math.max(0, Number(receiptClient.totalPaid || 0) - (Number(receipt.amount) || 0));
+                receiptClient.debt = Math.max(0, Number(receiptClient.debt || 0) + restoredDebt);
+              }
+              self.receipts = (self.receipts || []).filter(function(item) { return item.id !== receipt.id; });
+              if (self._queueCloudDelete) self._queueCloudDelete(self.currentFarmId, 'receipts', receipt.id);
+              archived = true;
+            }
+            var expense = (self.expenses || []).find(function(e) { return e.id === ref; });
+            if (expense) {
+              self.archiveDeletedRecord('Despesa', expense, 'Despesa eliminada a partir do Livro de Caixa');
+              if (self._queueCloudDelete) self._queueCloudDelete(self.currentFarmId, 'expenses', expense.id);
+              archived = true;
             }
             self.expenses = (self.expenses || []).filter(function(e) { return e.id !== ref; });
           }
+          if (!archived) self.archiveDeletedRecord('Caixa', t.raw || t, 'Movimento de caixa eliminado');
           self.logAudit('ANULAÇÃO DE MOVIMENTO', 'Anulou o movimento: ' + t.desc, t.amount);
           self.persistFarm();
           self.toast('Movimento anulado e registado na auditoria!');

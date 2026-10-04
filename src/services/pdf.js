@@ -184,177 +184,88 @@ function buildPdfDocument(pages, imageRefs) {
   return concatBytes(parts);
 }
 
+async function generateBrandedDocumentPDF(data) {
+  data=data||{};
+  var settings=data.settings||{};
+  var columns=['Data','Tipo','Registo','Detalhes','Valor'];
+  var sectionMarkup=(Array.isArray(data.sections)?data.sections:[]).map(function(section){
+    var headers=Array.isArray(section.columns)?section.columns:[];
+    var rows=Array.isArray(section.rows)?section.rows:[];
+    var headerMarkup=headers.map(function(header){ return '<th>'+financeReportEscape(header)+'</th>'; }).join('');
+    var bodyMarkup=rows.map(function(row){
+      return '<tr>'+row.map(function(value){ return '<td>'+financeReportEscape(value)+'</td>'; }).join('')+'</tr>';
+    }).join('');
+    return '<section class="invoice-items-section"><h2 style="margin:0 0 10px;font-size:13px;color:#0f172a;text-transform:uppercase">'+financeReportEscape(section.title||'Registos')+'</h2><table class="invoice-items-table"><thead><tr>'+headerMarkup+'</tr></thead><tbody>'+(bodyMarkup||'<tr><td colspan="'+Math.max(1,headers.length)+'">Nenhum registo neste período.</td></tr>')+'</tbody></table></section>';
+  }).join('');
+  var title=financeReportEscape(data.title||'Relatório');
+  var period=financeReportEscape(data.period||'Todos os períodos');
+  var company=financeReportEscape(settings.companyLegalName||settings.farmName||'Aviário Inteligente Pro');
+  var subtitle=financeReportEscape(settings.companySubtitle||settings.tagline||'Gestão Avícola');
+  var metadata=financeReportEscape([settings.companyAddress||settings.location,settings.phone,settings.companyEmail].filter(Boolean).join(' · '));
+  var logo=financeReportEscape(settings.companyLogo||'./assets/icon-192.png');
+  var holder=document.createElement('div');
+  holder.style.position='fixed'; holder.style.left='-12000px'; holder.style.top='0'; holder.style.width='794px'; holder.style.zIndex='-1'; holder.style.pointerEvents='none';
+  holder.innerHTML='<article class="invoice-sheet" style="width:794px;max-width:none;margin:0;border:0;border-radius:0;box-shadow:none"><header class="invoice-sheet-header"><div class="invoice-company-block"><div class="invoice-logo-box"><img src="'+logo+'" alt=""></div><div class="invoice-company-info"><h1>'+company+'</h1><p class="invoice-company-subtitle">'+subtitle+'</p><p class="invoice-company-contact">'+metadata+'</p></div></div><div class="invoice-number-block"><span>'+title+'</span><strong>'+period+'</strong><small>Emitido em '+financeReportEscape(new Date().toLocaleString('pt-PT'))+'</small></div></header>'+sectionMarkup+'<footer class="invoice-sheet-footer"><span>'+financeReportEscape(settings.reportFooter||'Documento emitido pelo Aviário Inteligente Pro.')+'</span><span>'+title+'</span></footer></article>';
+  document.body.appendChild(holder);
+  try {
+    await inlineInvoiceImages(holder);
+    if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
+    var sheet=holder.querySelector('.invoice-sheet');
+    await new Promise(function(resolve){ requestAnimationFrame(function(){ requestAnimationFrame(resolve); }); });
+    var canvas=await html2canvas(sheet,{backgroundColor:'#ffffff',scale:2,useCORS:true,allowTaint:false,logging:false,imageTimeout:10000,width:794,height:sheet.scrollHeight,windowWidth:794,windowHeight:Math.max(sheet.scrollHeight,1000)});
+    if (!canvas||!canvas.width||!canvas.height) throw new Error('O documento PDF ficou vazio.');
+    var pageHeight=Math.round(canvas.width*(842/595)), pages=[], images={}, count=Math.max(1,Math.ceil(canvas.height/pageHeight));
+    for (var index=0;index<count;index++) {
+      var key='document'+index;
+      images[key]=canvasPageImage(canvas,index*pageHeight,pageHeight);
+      var drawHeight=images[key].height<pageHeight?842*(images[key].height/pageHeight):842;
+      pages.push({ops:['q 595 0 0 '+drawHeight.toFixed(2)+' 0 '+(842-drawHeight).toFixed(2)+' cm /Im'+key+' Do Q'],y:0});
+    }
+    var bytes=buildPdfDocument(pages,images), blob=new Blob([bytes],{type:'application/pdf'}), url=URL.createObjectURL(blob), link=document.createElement('a');
+    var filename=String(data.filename||data.title||'Relatorio').replace(/[^A-Za-z0-9_-]+/g,'_');
+    link.href=url; link.download=filename+'_'+new Date().toISOString().slice(0,10)+'.pdf'; document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); },3000);
+    return {success:true,pages:pages.length};
+  } finally { holder.remove(); }
+}
+
 export function generateProfessionalAviarioPDF(farmData, title) {
   farmData=farmData||{};
-  var settings=farmData.settings||{};
-  var k=farmData.kpis||{};
   var arrays={
-    sales:Array.isArray(farmData.sales)?farmData.sales:[],
-    lotes:Array.isArray(farmData.lotes)?farmData.lotes:[],
-    feed:Array.isArray(farmData.feedLogs)?farmData.feedLogs:[],
-    mortality:Array.isArray(farmData.mortalityLogs)?farmData.mortalityLogs:[],
-    clients:Array.isArray(farmData.clients)?farmData.clients:[],
-    expenses:Array.isArray(farmData.expenses)?farmData.expenses:[],
-    receipts:Array.isArray(farmData.receipts)?farmData.receipts:[],
-    stock:Array.isArray(farmData.stockItems)?farmData.stockItems:[],
-    health:Array.isArray(farmData.healthLogs)?farmData.healthLogs:[],
-    attendance:Array.isArray(farmData.attendance)?farmData.attendance:[],
-    energy:Array.isArray(farmData.energyLogs)?farmData.energyLogs:[],
-    suppliers:Array.isArray(farmData.suppliers)?farmData.suppliers:[],
-    notifications:Array.isArray(farmData.notifications)?farmData.notifications:[],
-    cashTransactions:Array.isArray(farmData.cashTransactions)?farmData.cashTransactions:[],
-    priceTable:Array.isArray(farmData.priceTable)?farmData.priceTable:[]
+    sales:farmData.sales||[],lotes:farmData.lotes||[],feed:farmData.feedLogs||[],mortality:farmData.mortalityLogs||[],
+    clients:farmData.clients||[],expenses:farmData.expenses||[],receipts:farmData.receipts||[],stock:farmData.stockItems||[],
+    health:farmData.healthLogs||[],attendance:farmData.attendance||[],energy:farmData.energyLogs||[],suppliers:farmData.suppliers||[],
+    notifications:farmData.notifications||[],cash:farmData.cashTransactions||[],priceTable:farmData.priceTable||[]
   };
-  var finance=farmData.financeSummary||{};
-  var projection=farmData.financeProjection||{};
-  var alerts=Array.isArray(farmData.alerts)?farmData.alerts:[];
-  var agenda=Array.isArray(farmData.agenda)?farmData.agenda:[];
-  var company=safePdfText(settings.companyLegalName||settings.farmName,'Aviário Inteligente Pro');
-  var subtitle=safePdfText(settings.companySubtitle||settings.tagline,'Gestão Avícola');
-  var meta=[settings.companyAddress||settings.location,settings.phone,settings.companyEmail].filter(Boolean).join(' · ');
-  var neutralDark=[0.16,0.19,0.18];
-  var neutralSoft=[0.96,0.97,0.97];
-  var pages=[], page={ops:[],y:795};
-  var logoPromise=pdfBrandLogo(settings);
-  var sigPromise=pdfImageData(resolvePdfAsset(settings.signatureImage||''));
-  function newPage(){ pages.push(page); page={ops:[],y:795}; }
-  function ensure(h){ if(page.y-h<45) newPage(); }
-  function text(text,size,bold){
-    var lines=pdfWrap(text, Math.max(28,Math.floor(535/(size*0.5))));
-    lines.forEach(function(line){ ensure(size+5); pdfDrawText(page.ops,40,page.y,size,line,bold); page.y-=size+4; });
-  }
-  function heading(t){ ensure(32); page.y-=3; pdfSetFill(page.ops,neutralDark); pdfDrawText(page.ops,40,page.y,15,t,true); pdfSetFill(page.ops,[0,0,0]); page.y-=8; pdfFillRect(page.ops,40,page.y,515,3,neutralDark); page.y-=12; }
-  function kv(label,value){ ensure(20); pdfDrawText(page.ops,40,page.y,9,label,true); pdfDrawText(page.ops,180,page.y,9,safePdfText(value,'—'),false); page.y-=15; }
-  function table(headers,rows){
-    var cols=headers.length, width=515/cols, x0=40;
-    function drawHeader(){
-      ensure(42);
-      pdfFillRect(page.ops,40,page.y-5,515,23,neutralDark);
-      pdfSetFill(page.ops,[1,1,1]);
-      headers.forEach(function(h,i){ pdfDrawText(page.ops,x0+i*width,page.y+2,7.7,safePdfText(h,''),true); });
-      pdfSetFill(page.ops,[0,0,0]);
-      page.y-=31;
-    }
-    drawHeader();
-    rows.forEach(function(r,rowIndex){
-      var cells=r.map(function(v){return safePdfText(v,'—');});
-      var wrapped=cells.map(function(v){return pdfWrap(v,Math.max(8,Math.floor(width/(6*0.48))));});
-      var lines=Math.max.apply(null,wrapped.map(function(a){return a.length;}));
-      var rowH=Math.max(17,lines*9+7);
-      if(page.y-rowH<45){ pages.push(page); page={ops:[],y:795}; drawHeader(); }
-      if(rowIndex%2===0) pdfFillRect(page.ops,40,page.y-rowH+8,515,rowH,neutralSoft);
-      pdfStrokeRect(page.ops,40,page.y-rowH+8,515,rowH,[0.82,0.88,0.85],0.35);
-      for(var li=0;li<lines;li++){
-        wrapped.forEach(function(w,i){ pdfDrawText(page.ops,x0+i*width,page.y-li*9,7.15,w[li]||'',false); });
-      }
-      page.y-=rowH;
-    });
-    if(!rows.length){
-      ensure(30);
-      pdfFillRect(page.ops,40,page.y-17,515,20,[0.97,0.98,0.98]);
-      pdfDrawText(page.ops,48,page.y-4,8,'Nenhum registo disponível.',false);
-      page.y-=28;
-    }
-  }
-  function simpleList(label,items){ heading(label); if(!items.length) { text('Nenhum registo disponível.',9,false); return; } items.forEach(function(v){ text('• '+v,9,false); }); }
-
-  // Cabeçalho limpo com a identidade da empresa. A logo é inserida no mesmo cabeçalho.
-  pdfDrawRule(page.ops,40,748,555,748,0.9);
-  pdfDrawText(page.ops,112,724,18,company,true);
-  pdfDrawText(page.ops,112,707,9.5,subtitle,true);
-  if(settings.tagline && settings.tagline !== subtitle) pdfDrawText(page.ops,112,693,8.2,safePdfText(settings.tagline,''),false);
-  if(meta) pdfDrawText(page.ops,112,679,7.4,meta,false);
-  pdfDrawText(page.ops,112,664,7.6,'Relatório: '+safePdfText(title,'Relatório de Gestão Avícola'),false);
-  pdfDrawText(page.ops,470,724,8,'Emitido',true);
-  pdfDrawText(page.ops,470,710,8,new Date().toLocaleDateString('pt-PT'),false);
-  page.y=640;
-  if(settings.reportFooter) { pdfDrawText(page.ops,40,page.y,7.5,safePdfText(settings.reportFooter,''),false); page.y-=14; }
-
-  heading('Resumo Executivo');
-  [
+  var k=farmData.kpis||{}, finance=farmData.financeSummary||{}, projection=farmData.financeProjection||{};
+  var sections=[{title:'Resumo Executivo',columns:['Indicador','Resultado'],rows:[
     ['Aves disponíveis',k.remainingBirds||0],['Mortalidade',String(k.mortalityRate||0)+'%'],['Receita',pdfMoney(k.totalRevenue)],['Lucro líquido',pdfMoney(k.netProfit)],
     ['Saldo em caixa',pdfMoney(finance.saldoCaixa!=null?finance.saldoCaixa:k.cashBalance)],['A receber',pdfMoney(finance.totalAReceber!=null?finance.totalAReceber:k.accountsReceivable)]
-  ].forEach(function(v){ kv(v[0],v[1]); });
-
+  ]}];
   if (farmData.financeSummary) {
-    heading('Resumo Financeiro');
-    kv('Período',finance.periodo||farmData.finPeriod||'Actual');
-    kv('Entradas',pdfMoney(finance.periodReceitas));
-    kv('Saídas',pdfMoney(finance.periodDespesas));
-    kv('Resultado',pdfMoney(finance.lucro));
-    kv('Margem',String(Number(finance.margemLucro||0).toFixed(1))+'%');
-    kv('A pagar',pdfMoney(finance.totalAPagar));
-    heading('Métodos de Pagamento');
-    var methodRows=Object.keys(finance.methods||{}).map(function(m){return [m,pdfMoney(finance.methods[m])];});
-    table(['Método','Total'],methodRows);
-    if(projection && (projection.revenue!=null || projection.profit!=null)){
-      heading('Projecção de Gestão');
-      kv('Receita projectada',pdfMoney(projection.revenue));
-      kv('Custo projectado',pdfMoney(projection.costs));
-      kv('Resultado projectado',pdfMoney(projection.profit));
-      kv('Margem projectada',String(Number(projection.margin||0).toFixed(1))+'%');
-      if(projection.targetDate) kv('Data estimada',projection.targetDate);
-    }
+    sections.push({title:'Resumo Financeiro',columns:['Indicador','Resultado'],rows:[['Período',finance.periodo||farmData.finPeriod||'Actual'],['Entradas',pdfMoney(finance.periodReceitas)],['Saídas',pdfMoney(finance.periodDespesas)],['Resultado',pdfMoney(finance.lucro)],['Margem',String(Number(finance.margemLucro||0).toFixed(1))+'%'],['A pagar',pdfMoney(finance.totalAPagar)]]});
+    sections.push({title:'Métodos de Pagamento',columns:['Método','Total'],rows:Object.keys(finance.methods||{}).map(function(method){return [method,pdfMoney(finance.methods[method])];})});
+    if (projection && (projection.revenue!=null || projection.profit!=null)) sections.push({title:'Projecção de Gestão',columns:['Indicador','Resultado'],rows:[['Receita projectada',pdfMoney(projection.revenue)],['Custo projectado',pdfMoney(projection.costs)],['Resultado projectado',pdfMoney(projection.profit)],['Margem projectada',String(Number(projection.margin||0).toFixed(1))+'%'],['Data estimada',projection.targetDate||'—']]});
   }
-
-  heading('Vendas de Frangos');
-  table(['Data','Cliente','Lote','Qtd.','Total','Pagamento','Estado'],arrays.sales.map(function(v){return [v.date,v.clientName||'Cliente',v.loteCode||'—',v.qty||0,pdfMoney(v.totalAmount),v.paymentMethod||'—',v.paymentStatus||((Number(v.debtAmount)||0)>0?'Pendente':'Pago')];}));
-  heading('Lotes');
-  table(['Código','Entrada','Raça','Inicial','Mortes','Restantes','Estado'],arrays.lotes.map(function(l){var rest=(Number(l.initialBirds)||0)-(Number(l.deaths)||0)-(Number(l.soldBirds)||0);return [l.code,l.entryDate,l.breed,l.initialBirds||0,l.deaths||0,rest,l.status||'Ativo'];}));
-  heading('Ração & Alimentação');
-  table(['Data','Lote','Movimento','Qtd. kg','Custo'],arrays.feed.map(function(f){return [f.date,f.loteCode||'Geral',f.movement||f.type||'',f.qtyKg||0,pdfMoney(f.totalCost)];}));
-  heading('Mortalidade');
-  table(['Data','Lote','Qtd.','Motivo'],arrays.mortality.map(function(m){return [m.date,m.loteCode,m.qty||0,m.reason||''];}));
-  heading('Clientes & Dívidas');
-  table(['Cliente','Contacto','Compras','Pago','Dívida'],arrays.clients.map(function(c){return [c.name,c.phone,pdfMoney(c.totalBought),pdfMoney(c.totalPaid),pdfMoney(c.debt)];}));
-  heading('Despesas');
-  table(['Data','Categoria','Descrição','Valor','Pagamento'],arrays.expenses.map(function(e){return [e.date,e.category,e.description||e.desc,pdfMoney(e.amount),e.paymentMethod||'—'];}));
-  heading('Recebimentos');
-  table(['Data','Cliente','Valor','Método','Referência'],arrays.receipts.map(function(r){return [r.date,r.clientName,pdfMoney(r.amount),r.paymentMethod||'—',r.referenceId||r.saleId||''];}));
-  heading('Stock');
-  table(['Item','Categoria','Qtd.','Unidade','Valor'],arrays.stock.map(function(s){return [s.name,s.category,s.qty||0,s.unit||'un',pdfMoney((Number(s.qty)||0)*(Number(s.unitPrice)||0))];}));
-  heading('Saúde & Vacinação');
-  table(['Data','Lote','Tipo','Produto','Qtd.','Próxima'],arrays.health.map(function(h){return [h.date,h.loteCode,h.type,h.product,h.quantity||h.qty||0,h.nextDate||''];}));
-  heading('Presença & Equipa');
-  table(['Data','Funcionário','Estado','Entrada','Saída'],arrays.attendance.map(function(a){return [a.date,a.staffName||a.name,a.status,a.checkIn,a.checkOut];}));
-  heading('Extrato de Caixa');
-  table(['Data','Tipo','Categoria','Descrição','Valor','Método'],arrays.cashTransactions.map(function(t){return [t.date,t.type,t.category,t.desc||t.description,pdfMoney(t.amount),t.paymentMethod||'—'];}));
-  heading('Energia');
-  table(['Data','Anterior','Actual','Consumo','Custo'],arrays.energy.map(function(e){return [e.date,e.previous||e.prev||e.prevReading||0,e.current||e.curr||e.currReading||0,e.consumption||e.kwh||0,pdfMoney(e.amount||e.cost)];}));
-  heading('Fornecedores');
-  table(['Fornecedor','Contacto','Categoria','Saldo/Obs.'],arrays.suppliers.map(function(s){return [s.name,s.phone||s.contact,s.category,s.balance!=null?pdfMoney(s.balance):(s.notes||'')];}));
-  heading('Tabela de Preços');
-  table(['Produto/Serviço','Unidade','Preço'],arrays.priceTable.map(function(p){return [p.name||p.product||p.label,p.unit||p.unitType,pdfMoney(p.price||p.amount)];}));
-  simpleList('Alertas',alerts.map(function(a){return safePdfText(a.title||a.type)+' — '+safePdfText(a.detail||a.message);}));
-  simpleList('Agenda',agenda.map(function(a){return safePdfText(a.date)+' — '+safePdfText(a.title)+': '+safePdfText(a.detail);}));
-  heading('Informação da Empresa');
-  kv('Empresa',company); kv('Actividade',subtitle); kv('Responsável',settings.signatureName||settings.ownerName||'—'); kv('Cargo',settings.signatureTitle||'—');
-  text(settings.reportFooter||'Documento gerado automaticamente pelo Aviário Inteligente Pro.',8,false);
-  if(settings.tagline && settings.tagline !== subtitle) text(settings.tagline,8,true);
-  newPage();
-  // Última página dedicada à assinatura, evitando que ela seja cortada em tabelas longas.
-  heading('Assinatura e Validação');
-  text('Responsável pela emissão: '+safePdfText(settings.signatureName||settings.ownerName,'Não configurado'),9,true);
-  text('Cargo: '+safePdfText(settings.signatureTitle,'Responsável'),9,false);
-  if(meta) text(meta,8,false);
-  if(!settings.signatureImage) { page.y-=15; pdfDrawRule(page.ops,180,page.y,415,page.y,0.8); page.y-=14; text('Assinatura',8,false); }
-  else { page.y-=30; text('Assinatura digital configurada no perfil da empresa.',8,false); }
-  pages.push(page);
-
-  return Promise.all([logoPromise,sigPromise]).then(function(images){
-    var refs={};
-    if(images[0]) refs.logo=images[0];
-    if(images[1]) refs.signature=images[1];
-    // Colocar as imagens no cabeçalho/assinatura através do próprio conteúdo da página.
-    if(refs.logo){ pages.forEach(function(pg){ pg.ops.unshift('q 58 0 0 58 42 675 cm /ImLogo Do Q'); }); }
-    if(refs.signature){ pages[pages.length-1].ops.unshift('q 220 0 0 70 187 610 cm /ImSig Do Q'); }
-    var bytes=buildPdfDocument(pages,refs);
-    var blob=new Blob([bytes],{type:'application/pdf'});
-    var url=URL.createObjectURL(blob), a=document.createElement('a');
-    a.href=url; a.download=(title||'Relatorio_Aviario').replace(/[^\w\-]+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url);},3000);
-    return {success:true};
-  });
+  sections.push(
+    {title:'Vendas de Frangos',columns:['Data','Cliente','Lote','Qtd.','Total','Pagamento','Estado'],rows:arrays.sales.map(function(item){return [item.date,item.clientName||'Cliente',item.loteCode||'—',item.qty||0,pdfMoney(item.totalAmount),item.paymentMethod||'—',item.paymentStatus||((Number(item.debtAmount)||0)>0?'Pendente':'Pago')];})},
+    {title:'Lotes',columns:['Código','Entrada','Raça','Inicial','Mortes','Estado'],rows:arrays.lotes.map(function(item){return [item.code,item.entryDate,item.breed,item.initialBirds||0,item.deaths||0,item.status||'Ativo'];})},
+    {title:'Ração & Alimentação',columns:['Data','Lote','Movimento','Qtd. kg','Custo'],rows:arrays.feed.map(function(item){return [item.date,item.loteCode||'Geral',item.movement||item.type||'',item.qtyKg||0,pdfMoney(item.totalCost)];})},
+    {title:'Mortalidade',columns:['Data','Lote','Qtd.','Motivo'],rows:arrays.mortality.map(function(item){return [item.date,item.loteCode,item.qty||0,item.reason||''];})},
+    {title:'Clientes & Dívidas',columns:['Cliente','Contacto','Compras','Pago','Dívida'],rows:arrays.clients.map(function(item){return [item.name,item.phone,pdfMoney(item.totalBought),pdfMoney(item.totalPaid),pdfMoney(item.debt)];})},
+    {title:'Despesas',columns:['Data','Categoria','Descrição','Valor','Pagamento'],rows:arrays.expenses.map(function(item){return [item.date,item.category,item.description||item.desc,pdfMoney(item.amount),item.paymentMethod||'—'];})},
+    {title:'Recebimentos',columns:['Data','Cliente','Valor','Método','Referência'],rows:arrays.receipts.map(function(item){return [item.date,item.clientName,pdfMoney(item.amount),item.paymentMethod||'—',item.referenceId||item.saleId||''];})},
+    {title:'Stock',columns:['Item','Categoria','Qtd.','Unidade','Valor'],rows:arrays.stock.map(function(item){return [item.name,item.category,item.qty||0,item.unit||'un',pdfMoney((Number(item.qty)||0)*(Number(item.unitPrice)||0))];})},
+    {title:'Saúde & Vacinação',columns:['Data','Lote','Tipo','Produto','Qtd.','Próxima'],rows:arrays.health.map(function(item){return [item.date,item.loteCode,item.type,item.product,item.quantity||item.qty||0,item.nextDate||''];})},
+    {title:'Presença & Equipa',columns:['Data','Funcionário','Estado','Entrada','Saída'],rows:arrays.attendance.map(function(item){return [item.date,item.staffName||item.name,item.status,item.checkIn,item.checkOut];})},
+    {title:'Extrato de Caixa',columns:['Data','Tipo','Categoria','Descrição','Valor','Método'],rows:arrays.cash.map(function(item){return [item.date,item.type,item.category,item.desc||item.description,pdfMoney(item.amount),item.paymentMethod||'—'];})},
+    {title:'Energia',columns:['Data','Anterior','Actual','Consumo','Custo'],rows:arrays.energy.map(function(item){return [item.date,item.previous||item.prev||item.prevReading||0,item.current||item.curr||item.currReading||0,item.consumption||item.kwh||0,pdfMoney(item.amount||item.cost)];})},
+    {title:'Fornecedores',columns:['Fornecedor','Contacto','Categoria','Saldo/Obs.'],rows:arrays.suppliers.map(function(item){return [item.name,item.phone||item.contact,item.category,item.balance!=null?pdfMoney(item.balance):(item.notes||'')];})},
+    {title:'Tabela de Preços',columns:['Produto/Serviço','Unidade','Preço'],rows:arrays.priceTable.map(function(item){return [item.name||item.product||item.label,item.unit||item.unitType,pdfMoney(item.price||item.amount)];})}
+  );
+  var alerts=farmData.alerts||[], agenda=farmData.agenda||[];
+  sections.push({title:'Alertas e Agenda',columns:['Grupo','Data','Descrição'],rows:alerts.map(function(item){return ['Alerta','',safePdfText(item.title||item.type)+' — '+safePdfText(item.detail||item.message)];}).concat(agenda.map(function(item){return ['Agenda',item.date,safePdfText(item.title)+': '+safePdfText(item.detail)];}))});
+  return generateBrandedDocumentPDF({settings:farmData.settings||{},title:title||'Relatório de Gestão Avícola',period:farmData.period||'Todos os períodos',sections:sections,filename:title||'Relatorio_Aviario'});
 }
 
 function financeReportMoney(value) {
@@ -412,11 +323,26 @@ async function captureFinanceReport(farmData) {
 }
 
 export async function generateFinanceReportPDF(farmData) {
-  var data=farmData||{}; var canvas=await captureFinanceReport(data); if(!canvas||!canvas.width||!canvas.height) throw new Error('O relatório financeiro ficou vazio.');
-  var a4WidthPx=canvas.width, a4HeightPx=Math.round(a4WidthPx*(842/595)), pages=[], images={}, pageCount=Math.max(1,Math.ceil(canvas.height/a4HeightPx));
-  for(var p=0;p<pageCount;p++){ var key='finance'+p; images[key]=canvasPageImage(canvas,p*a4HeightPx,a4HeightPx); var drawH=images[key].height<a4HeightPx?842*(images[key].height/a4HeightPx):842; pages.push({ops:['q 595 0 0 '+drawH.toFixed(2)+' 0 '+(842-drawH).toFixed(2)+' cm /Im'+key+' Do Q'],y:0}); }
-  var bytes=buildPdfDocument(pages,images), blob=new Blob([bytes],{type:'application/pdf'}), url=URL.createObjectURL(blob), a=document.createElement('a');
-  a.href=url; a.download='Relatorio_Financeiro_'+String(data.period||(data.financeSummary&&data.financeSummary.periodo)||'historico').replace(/[^A-Za-z0-9_-]+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url);},3000); return {success:true,exactPreview:true};
+  var data=farmData||{}, summary=data.financeSummary||{}, transactions=Array.isArray(data.cashTransactions)?data.cashTransactions:[];
+  var methodRows=Object.keys(summary.methods||{}).map(function(method){return [method,pdfMoney(summary.methods[method])];});
+  var cashRows=transactions.map(function(item){var isOut=String(item.type||item.tipo||'').toUpperCase().indexOf('SA')===0;return [item.date,item.type||item.tipo,item.category,item.desc||item.description,item.paymentMethod||'—',(isOut?'- ':'')+pdfMoney(item.amount)];});
+  return generateBrandedDocumentPDF({
+    settings:data.settings||{},title:'Relatório Financeiro',period:summary.periodo||data.period||'Todos os períodos',filename:'Relatorio_Financeiro',
+    sections:[
+      {title:'Resumo Financeiro',columns:['Indicador','Valor'],rows:[['Saldo em caixa',pdfMoney(summary.saldoCaixa)],['Entradas',pdfMoney(summary.periodReceitas)],['Saídas',pdfMoney(summary.periodDespesas)],['Resultado',pdfMoney(summary.lucro)],['Margem',String(Number(summary.margemLucro||0).toFixed(1))+'%']]},
+      {title:'Métodos de Pagamento',columns:['Método','Total'],rows:methodRows},
+      {title:'Livro de Caixa',columns:['Data','Tipo','Categoria','Descrição','Método','Valor'],rows:cashRows}
+    ]
+  });
+}
+
+export function generateOperationalArchivePDF(data) {
+  data=data||{};
+  var rows=Array.isArray(data.rows)?data.rows:[];
+  return generateBrandedDocumentPDF({
+    settings:data.settings||{},title:'Arquivo Operacional · '+(data.type==='all'?'Todos os registos':data.type),period:data.period||'Todos os períodos',filename:'Arquivo_Operacional',
+    sections:[{title:'Histórico',columns:['Data','Tipo','Registo','Detalhes','Valor'],rows:rows.map(function(row){return [row.date,row.type,row.title,row.details,row.amountText];})}]
+  }).then(function(result){ return Object.assign(result,{rows:rows.length}); });
 }
 
 function dataUrlFromBlob(blob) {

@@ -42,6 +42,6 @@ for (const file of files.filter((f) => f.endsWith('.js'))) {
 }
 
 if (!fs.readFileSync('index.html','utf8').match(/src="\.\/src\/main\.js\?v=1"/)) throw new Error('Asset version mismatch');
-if (!fs.readFileSync('public/sw.js','utf8').includes("aviario-pro-pwa-v2")) throw new Error('Service worker PWA cache not updated');
+if (!fs.readFileSync('public/sw.js','utf8').includes("aviario-pro-pwa-v3")) throw new Error('Service worker PWA cache not updated');
 
 console.log(`Smoke test OK: ${sourceFiles.length} source files; no file exceeds 500 lines; Firebase atomic registration markers present; stale cache markers updated; static operational fallbacks checked.`);

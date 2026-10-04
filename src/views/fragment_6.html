@@ -128,7 +128,7 @@
                       <p class="font-bold text-xs" x-text="f.type + ' (' + f.qtyKg + ' kg)'"></p>
                       <p class="text-[11px] text-[var(--text-dim)]" x-text="'Fornecedor: ' + (f.supplier || 'AgroFeed') + ' · Data: ' + f.date"></p>
                     </div>
-                    <p class="font-mono font-bold text-emerald-400 text-sm" x-text="fmtMT(f.totalCost)"></p>
+                    <div class="flex items-center gap-2"><p class="font-mono font-bold text-emerald-400 text-sm" x-text="fmtMT(f.totalCost)"></p><button type="button" class="btn btn-ghost btn-sm text-red-400" @click="deleteFeedLog(f)" title="Apagar e arquivar compra" aria-label="Apagar compra"><span x-html="getIcon('trash')"></span></button></div>
                   </div>
                 </template>
               </div>
@@ -144,7 +144,7 @@
                       <p class="font-bold text-xs" x-text="f.type + ' (' + f.qtyKg + ' kg)'"></p>
                       <p class="text-[11px] text-[var(--text-dim)]" x-text="'Destino: ' + (f.loteCode || 'Geral') + ' · Data: ' + f.date"></p>
                     </div>
-                    <span class="badge badge-success text-xs">Consumido</span>
+                    <div class="flex items-center gap-2"><span class="badge badge-success text-xs">Consumido</span><button type="button" class="btn btn-ghost btn-sm text-red-400" @click="deleteFeedLog(f)" title="Apagar e arquivar consumo" aria-label="Apagar consumo"><span x-html="getIcon('trash')"></span></button></div>
                   </div>
                 </template>
               </div>
@@ -226,19 +226,21 @@
           <div class="space-y-4">
             
             <div class="flex justify-between items-center">
-              <p class="font-bold text-sm text-[var(--primary-light)]">Relatório Executivo Consolidado</p>
+              <p class="font-bold text-sm text-[var(--primary-light)]" x-text="subTabRelatorios==='arquivo' ? 'Arquivo Operacional Mensal' : 'Relatório Executivo Consolidado'"></p>
               <div class="flex gap-2">
-                <button type="button" class="btn btn-ghost btn-sm text-xs font-bold" @click="exportExcel()">
+                <button type="button" class="btn btn-ghost btn-sm text-xs font-bold" :class="subTabRelatorios==='producao' ? 'text-[var(--primary-light)]' : ''" @click="subTabRelatorios='producao'">Relatório</button>
+                <button type="button" class="btn btn-ghost btn-sm text-xs font-bold" :class="subTabRelatorios==='arquivo' ? 'text-[var(--primary-light)]' : ''" @click="subTabRelatorios='arquivo'">Arquivo Mensal</button>
+                <button x-show="subTabRelatorios!=='arquivo'" type="button" class="btn btn-ghost btn-sm text-xs font-bold" @click="exportExcel()">
                   <span x-html="getIcon('excel')"></span> Excel
                 </button>
-                <button type="button" class="btn btn-primary btn-sm text-xs font-bold" @click="exportPDF()">
+                <button x-show="subTabRelatorios!=='arquivo'" type="button" class="btn btn-primary btn-sm text-xs font-bold" @click="exportPDF()">
                   <span x-html="getIcon('pdf')"></span> Gerar PDF
                 </button>
               </div>
             </div>
 
             <!-- Área de Impressão do Relatório -->
-            <div id="report-print-area" class="card p-6 space-y-6 bg-white text-slate-900">
+            <div x-show="subTabRelatorios!=='arquivo'" id="report-print-area" class="card p-6 space-y-6 bg-white text-slate-900">
               <div class="flex justify-between items-end border-b-2 border-emerald-600 pb-3 gap-4">
                 <div class="flex items-center gap-3 min-w-0">
                   <div><img :src="settings.companyLogo || './assets/icon-192.png'" alt="Logotipo" class="w-16 h-16 object-contain rounded-lg border border-slate-200 p-1 bg-white"></div>
@@ -290,6 +292,68 @@
                   <template x-if="!settings.signatureImage"><div class="border-b border-slate-300 h-7"></div></template>
                   <p class="font-semibold mt-1" x-text="settings.signatureName"></p><p x-text="settings.signatureTitle"></p>
                 </div>
+              </div>
+            </div>
+
+            <div x-show="subTabRelatorios==='arquivo'" class="space-y-3">
+              <div class="card p-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <label class="label block mb-1">Período</label>
+                  <select class="input text-xs" x-model="archivePeriod">
+                    <option value="day">Dia</option>
+                    <option value="month">Mês</option>
+                    <option value="year">Ano</option>
+                    <option value="all">Todos os períodos</option>
+                  </select>
+                </div>
+                <div x-show="archivePeriod!=='all'">
+                  <label class="label block mb-1">Data de referência</label>
+                  <input type="date" class="input text-xs" x-model="archiveDate">
+                </div>
+                <div>
+                  <label class="label block mb-1">Tipo de registo</label>
+                  <select class="input text-xs" x-model="archiveType">
+                    <option value="all">Todos os registos</option>
+                    <option value="Venda">Vendas</option>
+                    <option value="Mortalidade">Mortalidade</option>
+                    <option value="Ração">Ração</option>
+                    <option value="Pesagem">Pesagens</option>
+                    <option value="Saúde">Saúde e vacinação</option>
+                    <option value="Energia">Energia</option>
+                    <option value="Presença">Presenças</option>
+                    <option value="Recebimento">Recebimentos</option>
+                    <option value="Caixa">Movimentos de caixa</option>
+                    <option value="Despesa">Despesas</option>
+                    <option value="Lote">Lotes</option>
+                    <option value="Notificação">Notificações</option>
+                    <option value="Auditoria">Auditoria</option>
+                    <option value="Eliminação">Eliminações</option>
+                    <option value="Eliminação">Eliminações</option>
+                  </select>
+                </div>
+                <div class="flex items-center gap-3">
+                  <p class="text-xs text-[var(--text-dim)]" x-text="getOperationalArchiveRows().length + ' registos encontrados'"></p>
+                  <button type="button" class="btn btn-primary btn-sm text-xs font-bold" @click="downloadOperationalArchivePDF()"><span x-html="getIcon('pdf')"></span> Baixar PDF</button>
+                </div>
+              </div>
+              <div class="card overflow-hidden">
+                <div class="overflow-x-auto">
+                  <table class="w-full min-w-[700px] text-xs text-left">
+                    <thead class="bg-[var(--surface-hover)] text-[var(--text-dim)]"><tr><th class="p-3">Data</th><th class="p-3">Tipo</th><th class="p-3">Registo</th><th class="p-3">Detalhes</th><th class="p-3 text-right">Valor</th></tr></thead>
+                    <tbody>
+                      <template x-for="row in getOperationalArchiveRows()" :key="row.id">
+                        <tr class="border-t border-[var(--border-color)]/50">
+                          <td class="p-3 whitespace-nowrap" x-text="row.date + (row.time ? ' · ' + row.time : '')"></td>
+                          <td class="p-3" x-text="row.type"></td>
+                          <td class="p-3 font-semibold" x-text="row.title"></td>
+                          <td class="p-3 text-[var(--text-dim)]" x-text="row.details"></td>
+                          <td class="p-3 text-right font-mono" x-text="row.amountText"></td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+                <p x-show="getOperationalArchiveRows().length===0" class="p-6 text-center text-xs text-[var(--text-dim)]">Não existem registos para este período e filtro.</p>
               </div>
             </div>
 

@@ -138,6 +138,15 @@ service cloud.firestore {
           && request.resource.data.uid == request.auth.uid;
         allow update, delete: if sameFarm(farmId) && isAdmin();
       }
+
+      match /archiveEvents/{eventId} {
+        allow read: if sameFarm(farmId);
+        allow create: if sameFarm(farmId)
+          && (isAdmin() || me().data.roleType == 'employee')
+          && request.resource.data.farmId == farmId
+          && request.resource.data.createdByUid == request.auth.uid;
+        allow update, delete: if sameFarm(farmId) && isAdmin();
+      }
     }
   }
 }

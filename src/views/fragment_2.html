@@ -246,7 +246,7 @@
                 </div>
                 <div class="space-y-2 max-h-32 overflow-auto">
                   <template x-for="h in (healthLogs||[]).slice(0,5)" :key="h.id">
-                    <div class="card-2 p-2.5 flex justify-between gap-2"><div><b class="text-xs" x-text="h.type + ' — ' + h.product"></b><small class="block text-[10px] text-[var(--text-dim)]" x-text="h.date + ' · ' + h.loteCode + (h.nextDate ? ' · Próx.: ' + h.nextDate : '')"></small></div><span class="text-[10px] font-mono text-amber-400" x-text="h.cost ? fmtMT(h.cost) : 'Sem custo'" ></span></div>
+                    <div class="card-2 p-2.5 flex justify-between items-center gap-2"><div><b class="text-xs" x-text="h.type + ' — ' + h.product"></b><small class="block text-[10px] text-[var(--text-dim)]" x-text="h.date + ' · ' + h.loteCode + (h.nextDate ? ' · Próx.: ' + h.nextDate : '')"></small></div><div class="flex items-center gap-2"><span class="text-[10px] font-mono text-amber-400" x-text="h.cost ? fmtMT(h.cost) : 'Sem custo'"></span><button type="button" class="btn btn-ghost btn-sm text-red-400" @click="deleteHealthLog(h)" title="Apagar registo de saúde" aria-label="Apagar registo de saúde"><span x-html="getIcon('trash')"></span></button></div></div>
                   </template>
                   <p x-show="!(healthLogs||[]).length" class="text-xs text-[var(--text-dim)]">Nenhum tratamento registado.</p>
                 </div>

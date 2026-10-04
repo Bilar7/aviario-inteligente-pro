@@ -360,6 +360,7 @@
                       <th class="p-3">Método</th>
                       <th class="p-3 font-mono text-right text-emerald-400">Valor Recebido</th>
                       <th class="p-3 text-center">Responsável</th>
+                      <th class="p-3 text-center">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -371,6 +372,7 @@
                         <td class="p-3 font-mono text-xs" x-text="t.paymentMethod"></td>
                         <td class="p-3 font-mono font-bold text-right text-emerald-400" x-text="fmtMT(t.amount)"></td>
                         <td class="p-3 text-center text-xs text-[var(--text-dim)]" x-text="t.responsible"></td>
+                        <td class="p-3 text-center"><button type="button" class="btn btn-ghost btn-sm text-red-400" @click="deleteTransactionWithAudit(t)" title="Apagar e arquivar" aria-label="Apagar e arquivar"><span x-html="getIcon('trash')"></span></button></td>
                       </tr>
                     </template>
                   </tbody>

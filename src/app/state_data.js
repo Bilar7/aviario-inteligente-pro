@@ -16,4 +16,5 @@ export const state = {
   cashLogs: [],
   suppliers: [],
   auditLogs: [],
+  archivedRecords: [],
 };

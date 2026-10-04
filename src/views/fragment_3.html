@@ -169,10 +169,11 @@
                   <input x-show="newFeedMovement==='COMPRA'" type="number" min="0" class="input text-xs font-mono" x-model="newFeedPriceBag">
                   <input x-show="newFeedMovement!=='COMPRA'" type="date" class="input text-xs" x-model="newFeedDate">
                 </div>
-                <div class="flex items-end">
-                  <button type="button" class="btn btn-primary w-full text-xs font-bold h-[38px]" @click="addFeedLog()">
-                    Lançar Ração
+                <div class="flex items-end gap-2">
+                  <button type="button" class="btn btn-primary w-full text-xs font-bold h-[38px]" @click="editingFeed ? saveFeedLogEdit() : addFeedLog()">
+                    <span x-text="editingFeed ? 'Guardar edição' : 'Lançar Ração'"></span>
                   </button>
+                  <button x-show="editingFeed" type="button" class="btn btn-ghost h-[38px]" @click="cancelFeedEdit()">Cancelar</button>
                 </div>
               </div>
             </div>
@@ -199,12 +200,16 @@
               <p class="label">Histórico de Movimentos de Ração</p>
               <div class="space-y-2">
                 <template x-for="f in feedLogs" :key="f.id">
-                  <div class="card-2 p-3 flex flex-wrap items-center justify-between gap-2">
+                    <div class="card-2 p-3 flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p class="font-bold text-xs sm:text-sm" x-text="f.type + ' · ' + f.qtyKg + ' kg'"></p>
                       <p class="text-[11px] text-[var(--text-dim)]" x-text="f.movement + ' · ' + f.date + ' · ' + f.loteCode"></p>
                     </div>
-                    <span class="badge" :class="f.movement==='COMPRA' ? 'badge-warning' : 'badge-normal'" x-text="f.movement"></span>
+                      <div class="flex items-center gap-1.5">
+                        <span class="badge" :class="f.movement==='COMPRA' ? 'badge-warning' : 'badge-normal'" x-text="f.movement"></span>
+                        <button type="button" class="btn btn-ghost btn-sm" @click="startEditFeedLog(f)" title="Editar movimento" aria-label="Editar movimento"><span x-html="getIcon('edit')"></span></button>
+                        <button type="button" class="btn btn-ghost btn-sm text-red-400" @click="deleteFeedLog(f)" title="Apagar movimento" aria-label="Apagar movimento"><span x-html="getIcon('trash')"></span></button>
+                      </div>
                   </div>
                 </template>
                 <p x-show="feedLogs.length===0" class="text-xs text-[var(--text-dim)] p-4 text-center">Nenhum registo de ração efetuado.</p>
@@ -316,10 +321,10 @@
                     <div>
                       <p class="font-bold text-xs sm:text-sm" x-text="s.qty + ' frangos · ' + s.clientName"></p>
                       <p class="text-[11px] text-[var(--text-dim)]" x-text="s.date + ' · ' + s.loteCode + ' · Total: ' + fmtMT(s.totalAmount) + ' · Pago: ' + fmtMT(s.paidAmount) + ' · ' + (s.paymentMethod || 'Método não indicado')"></p>
-                      <div class="flex justify-end mt-2"><button type="button" class="btn btn-ghost btn-sm text-[11px] font-bold" @click="openSaleInvoice(s)"><span x-html="getIcon('receipt')"></span> Emitir factura</button></div>
+                      <div class="flex flex-wrap gap-2 mt-2"><button type="button" class="btn btn-ghost btn-sm text-[11px] font-bold" @click="openSaleInvoice(s)"><span x-html="getIcon('receipt')"></span> Emitir factura</button><button type="button" x-show="_isAdminRole()" class="btn btn-ghost btn-sm text-[11px] font-bold text-red-400" @click="deleteSaleWithAudit(s)">Apagar</button></div>
                     </div>
                     <div class="flex items-center gap-2">
-                      <span class="badge" :class="s.debtAmount > 0 ? 'badge-warning' : 'badge-normal'" x-text="s.debtAmount > 0 ? 'Dívida: ' + fmtMT(s.debtAmount) : 'Pago Integral'"></span>
+                      <span class="badge" :class="getSalePaymentSummary(s).debtAmount > 0 ? 'badge-warning' : 'badge-normal'" x-text="getSalePaymentSummary(s).debtAmount > 0 ? 'Dívida: ' + fmtMT(getSalePaymentSummary(s).debtAmount) : 'Pago Integral'"></span>
                     </div>
                   </div>
                 </template>

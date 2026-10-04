@@ -100,6 +100,7 @@ export const methods = {
         if (!record) return;
         var self = this;
         this.confirm('Tem a certeza que deseja apagar este registo de mortalidade do lote ' + (record.loteCode || 'selecionado') + ' (' + (record.qty || 0) + ' aves)?', function() {
+          self.archiveDeletedRecord('Mortalidade', record, 'Registo de mortalidade eliminado');
           self.mortalityLogs = (self.mortalityLogs || []).filter(function(m) { return m.id !== record.id; });
           self.logAudit('APAGAR_MORTALIDADE', 'Eliminou o registo de mortalidade do lote ' + (record.loteCode || 'desconhecido') + ' com ' + (record.qty || 0) + ' aves.');
           self.persistFarm();
@@ -117,6 +118,10 @@ export const methods = {
         var qtyKg = Number(this.newFeedQtyKg) || 50;
         var mov = this.newFeedMovement || 'CONSUMO';
         var feedType = this.newFeedType || 'Ração A1 (Inicial)';
+        var feedId = 'f_' + Date.now();
+        var cashEntryId = '';
+        var stockAdjusted = false;
+        var bagWeight = Number(this.settings.feedBagsWeightKg) || 50;
   
         if (mov === 'CONSUMO') {
           if (!lote) {
@@ -126,16 +131,17 @@ export const methods = {
           // Deduz do stock correspondente
           var stockItem = this.stockItems.find(s => s.name.toLowerCase().indexOf('ração') !== -1);
           if (stockItem) {
-            var sacksDeducted = qtyKg / (this.settings.feedBagsWeightKg || 50);
+            var sacksDeducted = qtyKg / bagWeight;
             if (sacksDeducted > Number(stockItem.qty)) {
               this.toast('Stock de ração insuficiente para este consumo.', 'error');
               return;
             }
             stockItem.qty = Math.max(0, Number(stockItem.qty) - sacksDeducted);
+            stockAdjusted = true;
           }
         } else if (mov === 'COMPRA') {
           // Entrada no Stock + Saída no Caixa
-          var sacks = Math.ceil(qtyKg / (this.settings.feedBagsWeightKg || 50));
+          var sacks = Math.ceil(qtyKg / bagWeight);
           var priceBag = Number(this.newFeedPriceBag) || 0;
           var totalCost = sacks * priceBag;
   
@@ -156,21 +162,23 @@ export const methods = {
               lotNumber: 'HG-' + this.todayStr()
             });
           }
+          stockAdjusted = true;
   
           // Lança Saída Financeira
+          cashEntryId = 'csh_' + feedId;
           this.cashLogs.unshift({
-            id: 'csh_' + Date.now(),
+            id: cashEntryId,
             date: this.newFeedDate || this.todayStr(),
             type: 'OUT',
             category: 'Compra de Ração',
             description: 'Compra de ' + sacks + ' sacos de ' + feedType,
             amount: totalCost,
-            referenceId: 'feed_buy_' + Date.now()
+            referenceId: feedId
           });
         }
   
         var record = {
-          id: 'f_' + Date.now(),
+          id: feedId,
           loteId: lote ? lote.id : '',
           loteCode: lote ? lote.code : 'Armazém Geral',
           date: this.newFeedDate || this.todayStr(),
@@ -179,6 +187,8 @@ export const methods = {
           qtyKg: qtyKg,
           priceBag: Number(this.newFeedPriceBag) || 0,
           totalCost: mov === 'COMPRA' ? totalCost : 0,
+          cashEntryId: cashEntryId,
+          stockAdjusted: stockAdjusted,
           supplier: this.newFeedSupplier || '',
           recordedBy: this.currentUser ? this.currentUser.nome : 'Sistema'
         };
@@ -188,6 +198,130 @@ export const methods = {
         this.persistFarm();
         this.runAiDiagnostics();
         this.toast('Movimento de ração (' + mov + ') registado com sucesso!');
+      },
+      startEditFeedLog: function(record) {
+        if (!record) return;
+        this.editingFeed = record;
+        this.newFeedLoteId = record.loteId || '';
+        this.newFeedDate = record.date || this.todayStr();
+        this.newFeedType = record.type || 'Ração A1 (Inicial)';
+        this.newFeedMovement = record.movement || 'CONSUMO';
+        this.newFeedQtyKg = Number(record.qtyKg) || '';
+        this.newFeedPriceBag = Number(record.priceBag) || '';
+        this.newFeedSupplier = record.supplier || '';
+      },
+      cancelFeedEdit: function() {
+        this.editingFeed = null;
+        this.newFeedLoteId = this.getActiveLote() ? this.getActiveLote().id : '';
+        this.newFeedDate = this.todayStr();
+        this.newFeedType = 'Ração A1 (Inicial 0-14d)';
+        this.newFeedMovement = 'CONSUMO';
+        this.newFeedQtyKg = '';
+        this.newFeedPriceBag = '';
+        this.newFeedSupplier = '';
+      },
+      saveFeedLogEdit: function() {
+        var original = this.editingFeed;
+        if (!original) return;
+        if ((original.movement === 'COMPRA' || this.newFeedMovement === 'COMPRA') && !this._isAdminRole()) {
+          this.toast('A edição de compras de ração é reservada ao administrador.', 'error');
+          return;
+        }
+        var qtyKg = Number(this.newFeedQtyKg) || 0;
+        var lote = this.lotes.find(function(item) { return item.id === this.newFeedLoteId; }.bind(this));
+        var movement = this.newFeedMovement || 'CONSUMO';
+        var type = this.newFeedType || original.type;
+        var bagWeight = Number(this.settings.feedBagsWeightKg) || 50;
+        if (qtyKg <= 0 || (movement === 'CONSUMO' && !lote)) {
+          this.toast('Indique uma quantidade válida e selecione o lote para o consumo.', 'error');
+          return;
+        }
+        var oldStock = original.stockAdjusted === false ? null : (this.stockItems || []).find(function(item) { return item.name === original.type; });
+        var newStock = (this.stockItems || []).find(function(item) { return item.name === type; });
+        var stockDelta = function(log) {
+          return log.movement === 'COMPRA' ? Math.ceil((Number(log.qtyKg) || 0) / bagWeight) : -(Number(log.qtyKg) || 0) / bagWeight;
+        };
+        var oldDelta = oldStock ? stockDelta(original) : 0;
+        var updated = Object.assign({}, original, {
+          loteId: lote ? lote.id : '',
+          loteCode: lote ? lote.code : 'Armazém Geral',
+          date: this.newFeedDate || this.todayStr(),
+          type: type,
+          movement: movement,
+          qtyKg: qtyKg,
+          priceBag: Number(this.newFeedPriceBag) || 0,
+          totalCost: movement === 'COMPRA' ? Math.ceil(qtyKg / bagWeight) * (Number(this.newFeedPriceBag) || 0) : 0,
+          supplier: this.newFeedSupplier || '',
+          stockAdjusted: movement === 'COMPRA' || !!newStock,
+          updatedAt: new Date().toISOString()
+        });
+        var newDelta = newStock || movement === 'COMPRA' ? stockDelta(updated) : 0;
+        var oldNext = oldStock && oldStock !== newStock ? Number(oldStock.qty || 0) - oldDelta : null;
+        var newNext = oldStock === newStock && newStock
+          ? Number(newStock.qty || 0) - oldDelta + newDelta
+          : (newStock ? Number(newStock.qty || 0) + newDelta : null);
+        if (oldNext !== null && oldNext < 0 || newNext !== null && newNext < 0) {
+          this.toast('A alteração excede o stock disponível para corrigir este movimento.', 'error');
+          return;
+        }
+        if (oldNext !== null) oldStock.qty = oldNext;
+        if (movement === 'COMPRA' && !newStock) {
+          newStock = { id: 'stk_' + Date.now(), name: type, category: 'Ração', qty: 0, unit: 'Sacos 50kg', minStock: 10, price: updated.priceBag, supplier: updated.supplier, expiryDate: '', lotNumber: 'HG-' + updated.date };
+          this.stockItems.push(newStock);
+          newNext = newDelta;
+        }
+        if (newStock) newStock.qty = newNext;
+        var linkedCash = (this.cashLogs || []).find(function(entry) {
+          return entry.id === original.cashEntryId || entry.referenceId === original.id ||
+            (entry.category === 'Compra de Ração' && entry.date === original.date && Number(entry.amount) === Number(original.totalCost) && String(entry.description || '').indexOf(original.type) !== -1);
+        });
+        if (movement === 'COMPRA') {
+          if (linkedCash) Object.assign(linkedCash, { date: updated.date, category: 'Compra de Ração', description: 'Compra de ' + Math.ceil(qtyKg / bagWeight) + ' sacos de ' + type, amount: updated.totalCost, referenceId: original.id });
+          else {
+            updated.cashEntryId = 'csh_' + original.id;
+            this.cashLogs.unshift({ id: updated.cashEntryId, date: updated.date, type: 'OUT', category: 'Compra de Ração', description: 'Compra de ' + Math.ceil(qtyKg / bagWeight) + ' sacos de ' + type, amount: updated.totalCost, referenceId: original.id });
+          }
+        } else if (linkedCash) {
+          this.cashLogs = this.cashLogs.filter(function(entry) { return entry.id !== linkedCash.id; });
+          updated.cashEntryId = '';
+        }
+        this.feedLogs = (this.feedLogs || []).map(function(item) { return item.id === original.id ? updated : item; });
+        this.logAudit('EDIÇÃO_RAÇAO', 'Actualizou o movimento de ' + original.type + ' para ' + type + ' (' + qtyKg + ' kg).');
+        this.persistFarm();
+        this.runAiDiagnostics();
+        this.toast('Movimento de ração actualizado.');
+        this.cancelFeedEdit();
+      },
+      deleteFeedLog: function(record) {
+        if (!record) return;
+        if (record.movement === 'COMPRA' && !this._isAdminRole()) {
+          this.toast('A eliminação de compras de ração é reservada ao administrador.', 'error');
+          return;
+        }
+        var self = this;
+        this.confirm('Apagar este movimento de ' + (record.type || 'ração') + ' (' + (record.qtyKg || 0) + ' kg)?', function() {
+          var stock = (self.stockItems || []).find(function(item) { return item.name === record.type; });
+          if (stock && record.stockAdjusted !== false) {
+            var bagWeight = Number(self.settings.feedBagsWeightKg) || 50;
+            var delta = record.movement === 'COMPRA' ? Math.ceil((Number(record.qtyKg) || 0) / bagWeight) : -(Number(record.qtyKg) || 0) / bagWeight;
+            var nextQty = Number(stock.qty || 0) - delta;
+            if (nextQty < 0) { self.toast('Não é possível apagar: parte deste stock já foi consumida.', 'error'); return; }
+            stock.qty = nextQty;
+          }
+          self.archiveDeletedRecord('Ração', record, 'Movimento de ração eliminado');
+          self.feedLogs = (self.feedLogs || []).filter(function(item) { return item.id !== record.id; });
+          var linkedCash = (self.cashLogs || []).filter(function(entry) {
+            return entry.id === record.cashEntryId || entry.referenceId === record.id ||
+              (record.movement === 'COMPRA' && entry.category === 'Compra de Ração' && entry.date === record.date && Number(entry.amount) === Number(record.totalCost) && String(entry.description || '').indexOf(record.type) !== -1);
+          });
+          linkedCash.forEach(function(entry) { if (self._queueCloudDelete) self._queueCloudDelete(self.currentFarmId, 'cashEntries', entry.id); });
+          self.cashLogs = (self.cashLogs || []).filter(function(entry) { return entry.id !== record.cashEntryId && entry.referenceId !== record.id; });
+          self.logAudit('APAGAR_RAÇAO', 'Eliminou o movimento de ' + record.type + ' (' + (record.qtyKg || 0) + ' kg).');
+          self.persistFarm();
+          self.runAiDiagnostics();
+          self.toast('Movimento de ração apagado.');
+          if (self.editingFeed && self.editingFeed.id === record.id) self.cancelFeedEdit();
+        });
       },
       // OPERAÇÕES: VENDAS DE FRANGOS (MÓDULO 4) — CADEIA REATIVA
       getSalePreviewTotal: function() {
@@ -378,6 +512,16 @@ export const methods = {
         this.persistFarm();
         this.toast('Ponto registado para ' + staffMember.name + ' (' + status + ')');
       },
+  deleteAttendanceRecord: function(record) {
+        if (!record || !this._isAdminRole()) { this.toast('Apenas o administrador pode apagar presenças.', 'error'); return; }
+        var self=this;
+        this.confirm('Apagar a presença de '+(record.staffName||'colaborador')+' em '+(record.date||'—')+'?',function(){
+          self.archiveDeletedRecord('Presença',record,'Registo de presença eliminado');
+          self.attendance=(self.attendance||[]).filter(function(item){return item.id!==record.id;});
+          self.persistFarm();
+          self.toast('Presença eliminada e arquivada.');
+        });
+      },
   paySalaryAdvance: function(staffMember, amount, desc, paymentMethod) {
         var val = Number(amount);
         if (isNaN(val) || val <= 0) {
@@ -426,8 +570,13 @@ export const methods = {
         var pKwh = Number(this.newEnergyPriceKwh) || 0;
         var total = Number(this.newEnergyAmount) || Math.round(cons * pKwh);
   
+        var logId = 'en_' + Date.now();
+        var expenseId = 'e_energy_' + Date.now();
+        var cashId = 'csh_energy_' + Date.now();
         var log = {
-          id: 'en_' + Date.now(),
+          id: logId,
+          expenseId: expenseId,
+          cashEntryId: cashId,
           prevReading: prev,
           currReading: curr,
           consumptionKwh: cons,
@@ -439,7 +588,7 @@ export const methods = {
   
         // CADEIA REATIVA: Saída no Caixa & Despesa Financeira
         this.expenses.unshift({
-          id: 'e_' + Date.now(),
+          id: expenseId,
           loteId: '',
           loteCode: 'Geral',
           category: 'Energia (EDM Credelec)',
@@ -451,7 +600,7 @@ export const methods = {
         });
   
         this.cashLogs.unshift({
-          id: 'csh_' + Date.now(),
+          id: cashId,
           date: log.date,
           type: 'OUT',
           category: 'Energia Elétrica',
@@ -464,6 +613,25 @@ export const methods = {
         this.newEnergyCurr = curr + 150;
         this.persistFarm();
         this.toast('Fatura de energia de ' + this.fmtMT(total) + ' calculada e registada!');
+      },
+  deleteEnergyLog: function(record) {
+        if (!record || !this._isAdminRole()) { this.toast('Apenas o administrador pode apagar leituras de energia.', 'error'); return; }
+        var self=this;
+        this.confirm('Apagar a leitura de energia de '+(record.date||'—')+' ('+(Number(record.consumptionKwh)||0)+' kWh)?',function(){
+          self.archiveDeletedRecord('Energia',record,'Leitura de energia eliminada');
+          var consumption=Number(record.consumptionKwh)||0;
+          var description='Consumo elétrico '+consumption+' kWh (Contador EDM)';
+          var expense=(self.expenses||[]).find(function(item){return item.id===record.expenseId||(item.category==='Energia (EDM Credelec)'&&item.date===record.date&&item.description===description);});
+          var expenseId=expense?expense.id:record.expenseId;
+          self.energyLogs=(self.energyLogs||[]).filter(function(item){return item.id!==record.id;});
+          if (expenseId && self._queueCloudDelete) self._queueCloudDelete(self.currentFarmId, 'expenses', expenseId);
+          (self.cashLogs||[]).filter(function(item){return item.id===record.cashEntryId||item.referenceId===record.id||item.referenceId===expenseId;}).forEach(function(item){if(self._queueCloudDelete)self._queueCloudDelete(self.currentFarmId,'cashEntries',item.id);});
+          self.expenses=(self.expenses||[]).filter(function(item){return item.id!==expenseId;});
+          self.cashLogs=(self.cashLogs||[]).filter(function(item){return item.id!==record.cashEntryId&&item.referenceId!==record.id&&item.referenceId!==expenseId;});
+          self.persistFarm();
+          self.runAiDiagnostics();
+          self.toast('Leitura de energia eliminada e arquivada.');
+        });
       },
   addExpense: function() {
         var amt = Number(this.newExpAmount);
@@ -502,6 +670,76 @@ export const methods = {
         this.toast('Despesa de ' + this.fmtMT(amt) + ' registada com sucesso!');
         this.newExpDesc = '';
         this.newExpAmount = '';
+      },
+      startEditExpense: function(expense) {
+        if (!expense) return;
+        this.editingExpense = expense;
+        this.newExpLoteId = expense.loteId || '';
+        this.newExpCategory = expense.category || 'Outros';
+        this.newExpDesc = expense.description || expense.desc || '';
+        this.newExpAmount = Number(expense.amount) || '';
+        this.newExpDate = expense.date || this.todayStr();
+        this.newExpPaymentMethod = expense.paymentMethod || 'Caixa';
+        if (this.view !== 'despesas') this.view = 'despesas';
+      },
+      cancelExpenseEdit: function() {
+        this.editingExpense = null;
+        this.newExpLoteId = '';
+        this.newExpCategory = 'Medicamentos & Vacinas';
+        this.newExpDesc = '';
+        this.newExpAmount = '';
+        this.newExpDate = this.todayStr();
+        this.newExpPaymentMethod = 'Caixa / Numerário';
+      },
+      saveExpenseEdit: function() {
+        var original = this.editingExpense;
+        if (!original) return;
+        if (!this._isAdminRole || !this._isAdminRole()) { this.toast('A edição de despesas é reservada ao administrador.', 'error'); return; }
+        var amount = Number(this.newExpAmount);
+        if (!Number.isFinite(amount) || amount <= 0) { this.toast('Indique um valor válido para a despesa.', 'error'); return; }
+        var description = (this.newExpDesc || '').trim() || 'Despesa operacional';
+        var updated = Object.assign({}, original, {
+          loteId: this.newExpLoteId || original.loteId || '',
+          category: Number(original.bagsQty) > 0 ? original.category : (this.newExpCategory || original.category || 'Outros'),
+          description: description,
+          desc: description,
+          amount: amount,
+          date: this.newExpDate || this.todayStr(),
+          paymentMethod: this.newExpPaymentMethod || original.paymentMethod || 'Caixa',
+          updatedAt: new Date().toISOString()
+        });
+        this.expenses = (this.expenses || []).map(function(item) { return item.id === original.id ? updated : item; });
+        var linkedCash = (this.cashLogs || []).find(function(entry) { return entry.referenceId === original.id; });
+        if (linkedCash) Object.assign(linkedCash, { date: updated.date, category: updated.category, description: updated.description, amount: amount, paymentMethod: updated.paymentMethod });
+        else {
+          this.cashLogs.unshift({ id: 'csh_' + original.id, date: updated.date, type: 'OUT', category: updated.category, description: updated.description, amount: amount, paymentMethod: updated.paymentMethod, referenceId: updated.id });
+        }
+        this.logAudit('EDIÇÃO_DESPESA', 'Actualizou ' + updated.category + ': ' + updated.description, amount);
+        this.persistFarm();
+        this.runAiDiagnostics();
+        this.toast('Despesa actualizada.');
+        this.cancelExpenseEdit();
+      },
+      deleteExpense: function(expense) {
+        if (!expense) return;
+        if (!this._isAdminRole || !this._isAdminRole()) { this.toast('A eliminação de despesas é reservada ao administrador.', 'error'); return; }
+        var self = this;
+        this.confirm('Apagar a despesa "' + (expense.description || expense.desc || expense.category || 'Despesa') + '" no valor de ' + this.fmtMT(expense.amount) + '?', function() {
+          if (Number(expense.bagsQty) > 0 && expense.stockItemId) {
+            var stockItem = (self.stockItems || []).find(function(item) { return item.id === expense.stockItemId; });
+            if (stockItem) stockItem.qty = Number(stockItem.qty || 0) + Number(expense.bagsQty);
+          }
+          self.archiveDeletedRecord('Despesa', expense, 'Despesa eliminada');
+          if (self._queueCloudDelete) self._queueCloudDelete(self.currentFarmId, 'expenses', expense.id);
+          (self.cashLogs||[]).filter(function(entry){return entry.referenceId===expense.id;}).forEach(function(entry){if(self._queueCloudDelete)self._queueCloudDelete(self.currentFarmId,'cashEntries',entry.id);});
+          self.expenses = (self.expenses || []).filter(function(item) { return item.id !== expense.id; });
+          self.cashLogs = (self.cashLogs || []).filter(function(entry) { return entry.referenceId !== expense.id; });
+          self.logAudit('APAGAR_DESPESA', 'Eliminou ' + (expense.category || 'Despesa') + ': ' + (expense.description || expense.desc || ''), expense.amount);
+          self.persistFarm();
+          self.runAiDiagnostics();
+          self.toast('Despesa apagada e registada na auditoria.');
+          if (self.editingExpense && self.editingExpense.id === expense.id) self.cancelExpenseEdit();
+        });
       },
       // OPERAÇÕES: INVENTÁRIO & STOCK (MÓDULO 9) — 6 ABAS
       addStockItem: function() {
