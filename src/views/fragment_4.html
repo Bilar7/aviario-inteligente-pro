@@ -296,7 +296,7 @@
                         <td class="p-3 text-center">
                           <div class="flex items-center justify-center gap-1">
                             <button type="button" class="action-btn !p-1 text-xs" @click="toast(t.desc + ' · Valor: ' + fmtMT(t.amount) + ' · Registado por: ' + t.responsible)" title="Ver Detalhes"><span x-html="getIcon('eye')"></span></button>
-                            <button type="button" class="action-btn danger !p-1 text-xs" @click="deleteTransactionWithAudit(t)" title="Anular Movimento"><span x-html="getIcon('trash')"></span></button>
+                            <button type="button" class="record-action-btn danger" @click="deleteTransactionWithAudit(t)" title="Anular movimento" aria-label="Anular movimento"><span x-html="getIcon('trash')"></span></button>
                           </div>
                         </td>
                       </tr>
@@ -372,7 +372,7 @@
                         <td class="p-3 font-mono text-xs" x-text="t.paymentMethod"></td>
                         <td class="p-3 font-mono font-bold text-right text-emerald-400" x-text="fmtMT(t.amount)"></td>
                         <td class="p-3 text-center text-xs text-[var(--text-dim)]" x-text="t.responsible"></td>
-                        <td class="p-3 text-center"><button type="button" class="btn btn-ghost btn-sm text-red-400" @click="deleteTransactionWithAudit(t)" title="Apagar e arquivar" aria-label="Apagar e arquivar"><span x-html="getIcon('trash')"></span></button></td>
+                        <td class="p-3 text-center"><button type="button" class="record-action-btn danger" @click="deleteTransactionWithAudit(t)" title="Apagar e arquivar" aria-label="Apagar e arquivar"><span x-html="getIcon('trash')"></span></button></td>
                       </tr>
                     </template>
                   </tbody>

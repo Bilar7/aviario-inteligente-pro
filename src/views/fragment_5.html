@@ -40,7 +40,7 @@
                           <span class="badge text-[10px] font-bold" :class="e.status==='Pago' ? 'badge-normal' : 'badge-danger'" x-text="e.status"></span>
                         </td>
                         <td class="p-3 font-mono font-bold text-right text-red-400" x-text="fmtMT(e.amount)"></td>
-                        <td class="p-3 text-center"><div class="flex justify-center gap-1"><button type="button" class="btn btn-ghost btn-sm" @click="startEditExpense(e)" title="Editar despesa" aria-label="Editar despesa"><span x-html="getIcon('edit')"></span></button><button type="button" class="btn btn-ghost btn-sm text-red-400" @click="deleteExpense(e)" title="Apagar e arquivar" aria-label="Apagar e arquivar"><span x-html="getIcon('trash')"></span></button></div></td>
+                        <td class="p-3 text-center"><div class="flex justify-center gap-1"><button type="button" class="record-action-btn" @click="startEditExpense(e)" title="Editar despesa" aria-label="Editar despesa"><span x-html="getIcon('edit')"></span></button><button type="button" class="record-action-btn danger" @click="deleteExpense(e)" title="Apagar e arquivar" aria-label="Apagar e arquivar"><span x-html="getIcon('trash')"></span></button></div></td>
                       </tr>
                     </template>
                   </tbody>
@@ -375,7 +375,7 @@
               <template x-for="attendanceRecord in (attendance||[])" :key="attendanceRecord.id">
                 <div class="card-2 p-3 flex items-center justify-between gap-2">
                   <div><p class="font-bold text-xs" x-text="attendanceRecord.staffName + ' · ' + attendanceRecord.date"></p><p class="text-[11px] text-[var(--text-dim)]" x-text="(attendanceRecord.status||'Registada') + (attendanceRecord.checkIn ? ' · Entrada ' + attendanceRecord.checkIn : '') + (attendanceRecord.checkOut ? ' · Saída ' + attendanceRecord.checkOut : '')"></p></div>
-                  <button type="button" class="btn btn-ghost btn-sm text-red-400" @click="deleteAttendanceRecord(attendanceRecord)" title="Apagar presença" aria-label="Apagar presença"><span x-html="getIcon('trash')"></span></button>
+                  <button type="button" class="record-action-btn danger" @click="deleteAttendanceRecord(attendanceRecord)" title="Apagar presença" aria-label="Apagar presença"><span x-html="getIcon('trash')"></span></button>
                 </div>
               </template>
               <p x-show="!(attendance||[]).length" class="text-xs text-[var(--text-dim)]">Nenhuma presença registada.</p>
@@ -431,7 +431,7 @@
               <template x-for="energy in (energyLogs||[])" :key="energy.id">
                 <div class="card-2 p-3 flex items-center justify-between gap-2">
                   <div><p class="font-bold text-xs" x-text="energy.date + ' · ' + (Number(energy.consumptionKwh)||0) + ' kWh'"></p><p class="text-[11px] text-[var(--text-dim)]" x-text="(energy.prevReading||0) + ' → ' + (energy.currReading||0) + ' · Total: ' + fmtMT(energy.totalAmount)"></p></div>
-                  <button type="button" x-show="_isAdminRole()" class="btn btn-ghost btn-sm text-red-400" @click="deleteEnergyLog(energy)" title="Apagar leitura de energia" aria-label="Apagar leitura de energia"><span x-html="getIcon('trash')"></span></button>
+                  <button type="button" x-show="_isAdminRole()" class="record-action-btn danger" @click="deleteEnergyLog(energy)" title="Apagar leitura de energia" aria-label="Apagar leitura de energia"><span x-html="getIcon('trash')"></span></button>
                 </div>
               </template>
               <p x-show="!(energyLogs||[]).length" class="text-xs text-[var(--text-dim)]">Nenhuma leitura de energia registada.</p>
@@ -474,8 +474,8 @@
                     </div>
                     <div class="flex items-center gap-1.5">
                       <p class="font-mono font-bold text-sm text-red-400" x-text="'- ' + fmtMT(e.amount)"></p>
-                      <button type="button" x-show="_isAdminRole()" class="btn btn-ghost btn-sm" @click="startEditExpense(e)" title="Editar despesa" aria-label="Editar despesa"><span x-html="getIcon('edit')"></span></button>
-                      <button type="button" x-show="_isAdminRole()" class="btn btn-ghost btn-sm text-red-400" @click="deleteExpense(e)" title="Apagar despesa" aria-label="Apagar despesa"><span x-html="getIcon('trash')"></span></button>
+                      <button type="button" x-show="_isAdminRole()" class="record-action-btn" @click="startEditExpense(e)" title="Editar despesa" aria-label="Editar despesa"><span x-html="getIcon('edit')"></span></button>
+                      <button type="button" x-show="_isAdminRole()" class="record-action-btn danger" @click="deleteExpense(e)" title="Apagar despesa" aria-label="Apagar despesa"><span x-html="getIcon('trash')"></span></button>
                     </div>
                   </div>
                 </template>

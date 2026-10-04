@@ -29,6 +29,7 @@ export const methods = {
         if (Array.isArray(data.expenses)) this.expenses = data.expenses;
         if (Array.isArray(data.cashEntries)) this.cashLogs = data.cashEntries;
         if (Array.isArray(data.financialAudits)) this.financialAudits = data.financialAudits;
+        if (Array.isArray(data.auditLogs)) this.auditLogs = data.auditLogs;
       }
       if (Array.isArray(data.archivedRecords)) this.archivedRecords = data.archivedRecords;
     } catch (e) {}
@@ -43,6 +44,7 @@ export const methods = {
         expenses: this._isAdminRole() ? (this.expenses || []) : [],
         cashEntries: this._isAdminRole() ? (this.cashLogs || []) : [],
         financialAudits: this._isAdminRole() ? (this.financialAudits || []) : [],
+        auditLogs: this._isAdminRole() ? (this.auditLogs || []) : [],
         archivedRecords: this.archivedRecords || []
       }));
     } catch (e) {}
@@ -112,6 +114,7 @@ export const methods = {
       originalDate: record.date || record.entryDate || '',
       description: String(description || 'Registo eliminado'),
       deletedBy: String(user.nome || user.name || 'Sistema'),
+      recordSnapshot: Object.assign({}, record),
       createdByUid: String(user._authUid || user.uid || ''),
       farmId: this.currentFarmId || 'farm_principal'
     };
@@ -119,6 +122,22 @@ export const methods = {
     this.archivedRecords.unshift(event);
     if (this._queueCloudMutation) this._queueCloudMutation(event.farmId, 'archiveEvents', event);
     return event;
+  },
+
+  deleteArchivedRecord: function(eventId) {
+    if (!this.isSuperAdmin || !this.isSuperAdmin()) {
+      this.toast('Apenas o proprietário pode apagar registos do arquivo.', 'error');
+      return;
+    }
+    var event = (this.archivedRecords || []).find(function(item) { return String(item.id) === String(eventId); });
+    if (!event) return;
+    var self = this;
+    this.confirm('Apagar este registo do arquivo permanentemente?', function() {
+      self.archivedRecords = (self.archivedRecords || []).filter(function(item) { return String(item.id) !== String(eventId); });
+      if (self._queueCloudDelete) self._queueCloudDelete(self.currentFarmId || event.farmId, 'archiveEvents', eventId);
+      self.persistFarm();
+      self.toast('Registo removido do arquivo.');
+    });
   },
 
   _queueCloudDelete: function(farmId, collectionName, itemId) {
@@ -289,20 +308,23 @@ export const methods = {
 
     // Somente administradores consultam dados financeiros sensíveis.
     if (this._isAdminRole()) {
-      var expenses = [], cashEntries = [], audits = [];
+      var expenses = [], cashEntries = [], audits = [], activityLogs = [];
       try { expenses = await this._loadSubcollection(farmId, 'expenses'); } catch (e) {}
       try { cashEntries = await this._loadSubcollection(farmId, 'cashEntries'); } catch (e) {}
       try { audits = await this._loadSubcollection(farmId, 'financialAudits'); } catch (e) {}
+      try { activityLogs = await this._loadSubcollection(farmId, 'activityLogs'); } catch (e) {}
       if (!expenses.length && cloudRoot && Array.isArray(cloudRoot.expenses)) expenses = cloudRoot.expenses;
       if (!cashEntries.length && cloudRoot && Array.isArray(cloudRoot.cashLogs)) cashEntries = cloudRoot.cashLogs;
       if (!audits.length && cloudRoot && Array.isArray(cloudRoot.financialAudits)) audits = cloudRoot.financialAudits;
       this.expenses = this._mergePendingCollection(farmId, 'expenses', expenses);
       this.cashLogs = this._mergePendingCollection(farmId, 'cashEntries', cashEntries);
       this.financialAudits = this._mergePendingCollection(farmId, 'financialAudits', audits);
+      this.auditLogs = this._mergePendingCollection(farmId, 'activityLogs', activityLogs);
     } else {
       this.expenses = [];
       this.cashLogs = [];
       this.financialAudits = [];
+      this.auditLogs = [];
     }
   },
 

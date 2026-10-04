@@ -128,7 +128,7 @@
                       <p class="font-bold text-xs" x-text="f.type + ' (' + f.qtyKg + ' kg)'"></p>
                       <p class="text-[11px] text-[var(--text-dim)]" x-text="'Fornecedor: ' + (f.supplier || 'AgroFeed') + ' · Data: ' + f.date"></p>
                     </div>
-                    <div class="flex items-center gap-2"><p class="font-mono font-bold text-emerald-400 text-sm" x-text="fmtMT(f.totalCost)"></p><button type="button" class="btn btn-ghost btn-sm text-red-400" @click="deleteFeedLog(f)" title="Apagar e arquivar compra" aria-label="Apagar compra"><span x-html="getIcon('trash')"></span></button></div>
+                    <div class="flex items-center gap-2"><p class="font-mono font-bold text-emerald-400 text-sm" x-text="fmtMT(f.totalCost)"></p><button type="button" class="record-action-btn danger" @click="deleteFeedLog(f)" title="Apagar e arquivar compra" aria-label="Apagar compra"><span x-html="getIcon('trash')"></span></button></div>
                   </div>
                 </template>
               </div>
@@ -144,7 +144,7 @@
                       <p class="font-bold text-xs" x-text="f.type + ' (' + f.qtyKg + ' kg)'"></p>
                       <p class="text-[11px] text-[var(--text-dim)]" x-text="'Destino: ' + (f.loteCode || 'Geral') + ' · Data: ' + f.date"></p>
                     </div>
-                    <div class="flex items-center gap-2"><span class="badge badge-success text-xs">Consumido</span><button type="button" class="btn btn-ghost btn-sm text-red-400" @click="deleteFeedLog(f)" title="Apagar e arquivar consumo" aria-label="Apagar consumo"><span x-html="getIcon('trash')"></span></button></div>
+                    <div class="flex items-center gap-2"><span class="badge badge-success text-xs">Consumido</span><button type="button" class="record-action-btn danger" @click="deleteFeedLog(f)" title="Apagar e arquivar consumo" aria-label="Apagar consumo"><span x-html="getIcon('trash')"></span></button></div>
                   </div>
                 </template>
               </div>
@@ -325,24 +325,25 @@
                     <option value="Caixa">Movimentos de caixa</option>
                     <option value="Despesa">Despesas</option>
                     <option value="Lote">Lotes</option>
+                    <option value="Dívida">Dívidas de clientes</option>
+                    <option value="Stock">Stock e produtos</option>
+                    <option value="Equipa">Equipa</option>
+                    <option value="Fornecedor">Fornecedores</option>
                     <option value="Notificação">Notificações</option>
                     <option value="Auditoria">Auditoria</option>
                     <option value="Eliminação">Eliminações</option>
                   </select>
                 </div>
-                <div class="min-w-[190px] flex-1">
-                  <label class="label block mb-1">Pesquisar no arquivo</label>
-                  <input type="search" class="input text-xs" x-model="archiveSearch" placeholder="Data, tipo, registo ou detalhe">
-                </div>
                 <div class="flex items-center gap-3">
                   <p class="text-xs text-[var(--text-dim)]" x-text="getOperationalArchiveRows().length + ' registos encontrados'"></p>
+                  <button type="button" class="btn btn-ghost btn-sm text-xs font-bold" @click="exportOperationalArchiveExcel()"><span x-html="getIcon('excel')"></span> Baixar Excel</button>
                   <button type="button" class="btn btn-primary btn-sm text-xs font-bold" @click="downloadOperationalArchivePDF()"><span x-html="getIcon('pdf')"></span> Baixar PDF</button>
                 </div>
               </div>
               <div class="card overflow-hidden">
                 <div class="overflow-x-auto">
-                  <table class="w-full min-w-[760px] text-xs text-left">
-                    <thead class="bg-[var(--surface-hover)] text-[var(--text-dim)]"><tr><th class="p-3">Data</th><th class="p-3">Tipo</th><th class="p-3">Registo</th><th class="p-3">Detalhes</th><th class="p-3 text-right">Valor</th><th class="p-3 text-center">Ações</th></tr></thead>
+                  <table class="w-full min-w-[700px] text-xs text-left">
+                    <thead class="bg-[var(--surface-hover)] text-[var(--text-dim)]"><tr><th class="p-3">Data</th><th class="p-3">Tipo</th><th class="p-3">Registo</th><th class="p-3">Resumo</th><th class="p-3 text-right">Valor</th><th class="p-3 text-center">Ações</th></tr></thead>
                     <tbody>
                       <template x-for="row in getOperationalArchiveRows()" :key="row.id">
                         <tr class="border-t border-[var(--border-color)]/50">
@@ -351,7 +352,7 @@
                           <td class="p-3 font-semibold" x-text="row.title"></td>
                           <td class="p-3 text-[var(--text-dim)]" x-text="row.details"></td>
                           <td class="p-3 text-right font-mono" x-text="row.amountText"></td>
-                          <td class="p-3 text-center"><button x-show="row.archiveEventId && isSuperAdmin()" type="button" class="btn btn-ghost btn-sm text-red-400" @click="deleteArchivedRecord((archivedRecords||[]).find(event => event.id === row.archiveEventId))" title="Eliminar evento do arquivo" aria-label="Eliminar evento do arquivo"><span x-html="getIcon('trash')"></span></button></td>
+                          <td class="p-2 text-center"><div class="flex justify-center gap-1"><button type="button" class="record-action-btn" @click="openOperationalArchiveDetails(row)" title="Ver detalhes completos" aria-label="Ver detalhes completos"><span x-html="getIcon('eye')"></span></button><button x-show="isSuperAdmin() && row.archiveEventId" type="button" class="record-action-btn danger" @click="deleteArchivedRecord(row.archiveEventId)" title="Apagar do arquivo" aria-label="Apagar do arquivo"><span x-html="getIcon('trash')"></span></button></div></td>
                         </tr>
                       </template>
                     </tbody>
@@ -360,6 +361,27 @@
                 <p x-show="getOperationalArchiveRows().length===0" class="p-6 text-center text-xs text-[var(--text-dim)]">Não existem registos para este período e filtro.</p>
               </div>
             </div>
+
+            <template x-teleport="body">
+              <div x-show="archiveSelectedRecord" x-cloak class="app-modal z-[10001]" x-transition.opacity role="dialog" aria-modal="true" aria-labelledby="archive-detail-title" @keydown.escape.window="archiveSelectedRecord=null">
+                <div class="app-modal-card modal-lg max-h-[88vh] p-5 sm:p-6 shadow-2xl flex flex-col" @click.outside="archiveSelectedRecord=null">
+                  <div class="flex items-start justify-between gap-3 border-b border-[var(--border-color)] pb-3">
+                    <div class="min-w-0"><p class="label">Registo original</p><h3 id="archive-detail-title" class="text-base font-bold" x-text="archiveSelectedRecord && archiveSelectedRecord.title"></h3><p class="text-xs text-[var(--text-dim)]" x-text="archiveSelectedRecord && archiveSelectedRecord.date + (archiveSelectedRecord.time ? ' · ' + archiveSelectedRecord.time : '')"></p></div>
+                    <button type="button" class="record-action-btn" @click="archiveSelectedRecord=null" title="Fechar detalhes" aria-label="Fechar detalhes"><span x-html="getIcon('x')"></span></button>
+                  </div>
+                  <div class="overflow-y-auto min-h-0 divide-y divide-[var(--border-color)]">
+                    <template x-for="field in getOperationalArchiveDetailRows()" :key="field.key">
+                      <div class="grid grid-cols-1 sm:grid-cols-[minmax(130px,0.35fr)_1fr] gap-1 sm:gap-4 py-3">
+                        <p class="text-xs font-semibold text-[var(--text-dim)]" x-text="field.label"></p>
+                        <pre class="text-xs whitespace-pre-wrap break-words font-sans text-[var(--text-main)]" x-text="field.value"></pre>
+                      </div>
+                    </template>
+                    <p x-show="getOperationalArchiveDetailRows().length===0" class="p-5 text-center text-xs text-[var(--text-dim)]">Este registo não tem campos detalhados guardados.</p>
+                  </div>
+                  <div class="pt-3 border-t border-[var(--border-color)] flex justify-end"><button type="button" class="btn btn-ghost btn-sm" @click="archiveSelectedRecord=null">Fechar</button></div>
+                </div>
+              </div>
+            </template>
 
           </div>
         </template>

@@ -438,6 +438,7 @@ export const methods = {
         client.totalBought = (Number(client.totalBought) || 0) + total;
         client.totalPaid = (Number(client.totalPaid) || 0) + paid;
         client.debt = (Number(client.debt) || 0) + debt;
+        client.updatedAt = this.todayStr();
         if (debt > 0) client.dueDate = this.todayStr();
   
         // 2. O recebimento fica dentro da venda. O Livro de Caixa do administrador
@@ -473,7 +474,9 @@ export const methods = {
           totalBought: 0,
           totalPaid: 0,
           debt: 0,
-          dueDate: ''
+          dueDate: '',
+          createdAt: this.todayStr(),
+          updatedAt: this.todayStr()
         };
         this.clients.unshift(c);
         this.persistFarm();
@@ -757,7 +760,9 @@ export const methods = {
           price: Number(this.newStockPrice) || 0,
           supplier: this.newStockSupplier || '',
           expiryDate: this.newStockExpiry || '',
-          lotNumber: this.newStockLot || 'LOT-2026'
+          lotNumber: this.newStockLot || 'LOT-2026',
+          createdAt: this.todayStr(),
+          updatedAt: this.todayStr()
         };
         this.stockItems.unshift(item);
         this.persistFarm();

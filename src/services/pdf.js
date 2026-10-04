@@ -339,9 +339,13 @@ export async function generateFinanceReportPDF(farmData) {
 export function generateOperationalArchivePDF(data) {
   data=data||{};
   var rows=Array.isArray(data.rows)?data.rows:[];
+  var detailRows=Array.isArray(data.detailRows)?data.detailRows:[];
   return generateBrandedDocumentPDF({
     settings:data.settings||{},title:'Arquivo Operacional · '+(data.type==='all'?'Todos os registos':data.type),period:data.period||'Todos os períodos',filename:'Arquivo_Operacional',
-    sections:[{title:'Histórico',columns:['Data','Tipo','Registo','Detalhes','Valor'],rows:rows.map(function(row){return [row.date,row.type,row.title,row.details,row.amountText];})}]
+    sections:[
+      {title:'Histórico',columns:['Data','Tipo','Registo','Resumo','Valor'],rows:rows.map(function(row){return [row.date,row.type,row.title,row.details,row.amountText];})},
+      {title:'Detalhes dos registos',columns:['Data','Tipo','Registo','Campo','Valor registado'],rows:detailRows}
+    ]
   }).then(function(result){ return Object.assign(result,{rows:rows.length}); });
 }
 
