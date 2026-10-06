@@ -1,0 +1,1 @@
+export const APP_LOGO_PATH = './assets/aviario-inteligente-pro-logo.png';

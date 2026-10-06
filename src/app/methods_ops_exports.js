@@ -52,7 +52,7 @@ export const methods = {
   openSaleInvoice: function(sale) {
     if (!sale) { this.toast('Venda não encontrada para emitir a factura.', 'error'); return false; }
     var settings = Object.assign({}, this.settings || {});
-    if (!settings.companyLogo) settings.companyLogo = './assets/icon-192.png';
+    if (!settings.companyLogo) settings.companyLogo = window.AVIARIO_LOGO;
     var qty = Math.max(0, Number(sale.qty) || 0);
     var weightKg = Math.max(0, Number(sale.weightKg) || 0);
     var totalAmount = Math.max(0, Number(sale.totalAmount) || 0);

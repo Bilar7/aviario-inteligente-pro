@@ -17,10 +17,10 @@
           <header class="invoice-sheet-header">
             <div class="invoice-company-block">
               <div class="invoice-logo-box">
-                <img :src="invoicePreview && invoicePreview.settings && invoicePreview.settings.companyLogo ? invoicePreview.settings.companyLogo : './assets/icon-192.png'"
+                <img :src="invoicePreview && invoicePreview.settings && invoicePreview.settings.companyLogo ? invoicePreview.settings.companyLogo : window.AVIARIO_LOGO"
                      alt="Logotipo da empresa"
                      class="invoice-company-logo"
-                     @error="$event.target.src='./assets/icon-192.png'">
+                     @error="$event.target.src=window.AVIARIO_LOGO">
               </div>
               <div class="invoice-company-info">
                 <h1 x-text="invoicePreview && invoicePreview.settings ? (invoicePreview.settings.companyLegalName || invoicePreview.settings.farmName || 'Aviário Inteligente Pro') : 'Aviário Inteligente Pro'"></h1>

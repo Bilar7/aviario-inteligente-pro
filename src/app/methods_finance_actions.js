@@ -1,5 +1,4 @@
 import "../services/firebase.js";
-import { exportFinanceExcel } from "../services/exports.js";
 
 // Métodos: finance_actions
 export const methods = {
@@ -62,11 +61,12 @@ export const methods = {
         });
       },
   // Exportações Reais do Módulo Financeiro
-      exportFinancasExcel: function() {
+      exportFinancasExcel: async function() {
         var sum = this.getEliteFinSummary(this.finPeriod);
         var trans = this.getFilteredTransactions();
         var smart = this.getSmartKPIs();
-        var result = exportFinanceExcel({
+        var exports = await import('../services/exports.js');
+        var result = exports.exportFinanceExcel({
           settings: this.settings || {},
           period: this.finPeriod,
           today: this.todayStr(),

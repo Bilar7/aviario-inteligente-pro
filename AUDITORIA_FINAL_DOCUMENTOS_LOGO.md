@@ -12,7 +12,7 @@ Foi feita uma nova auditoria do ZIP `Aviario_Inteligente_Pro_V1_0_DOCUMENTOS_LOG
 - O PDF é uma captura/renderização da própria factura apresentada no sistema.
 - A impressão usa a mesma pré-visualização.
 - O cabeçalho contém o logotipo da empresa.
-- Quando não existe logo configurado, usa `./assets/icon-192.png`.
+- Quando não existe logo configurado, usa `./assets/aviario-inteligente-pro-logo.png`.
 - Foi acrescentado fallback para o logo padrão caso a imagem personalizada falhe no carregamento da pré-visualização.
 - A área de acções (`Imprimir` / `Baixar PDF`) não aparece no documento impresso/PDF.
 - O cabeçalho técnico do modal também não aparece na impressão/PDF.

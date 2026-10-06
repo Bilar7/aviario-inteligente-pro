@@ -243,7 +243,7 @@
             <div x-show="subTabRelatorios!=='arquivo'" id="report-print-area" class="card p-6 space-y-6 bg-white text-slate-900">
               <div class="flex justify-between items-end border-b-2 border-emerald-600 pb-3 gap-4">
                 <div class="flex items-center gap-3 min-w-0">
-                  <div><img :src="settings.companyLogo || './assets/icon-192.png'" alt="Logotipo" class="w-16 h-16 object-contain rounded-lg border border-slate-200 p-1 bg-white"></div>
+                  <div><img :src="settings.companyLogo || window.AVIARIO_LOGO" alt="Logotipo" class="w-16 h-16 object-contain rounded-lg border border-slate-200 p-1 bg-white"></div>
                   <div>
                     <h1 class="text-xl font-bold text-emerald-800" x-text="settings.companyLegalName || settings.farmName || 'Aviário Inteligente Pro'"></h1>
                     <p class="text-xs text-slate-600" x-text="settings.companySubtitle || settings.tagline || 'Sistema Integrado de Gestão Avícola & Produção'"></p>
@@ -395,7 +395,7 @@
               <div class="card-2 p-4 space-y-3 border border-[var(--primary)]/20">
                 <div class="flex items-start justify-between gap-3">
                   <div><p class="font-bold text-sm">Perfil e Identidade da Empresa</p><p class="text-xs text-[var(--text-dim)]">Estas informações aparecem automaticamente no site, nas facturas e nos relatórios.</p></div>
-                  <div class="shrink-0"><img :src="settings.companyLogo || './assets/icon-192.png'" alt="Logotipo da empresa" class="w-14 h-14 rounded-xl object-contain border border-[var(--border)] bg-white p-1"></div>
+                  <div class="shrink-0"><img :src="settings.companyLogo || window.AVIARIO_LOGO" alt="Logotipo da empresa" class="w-14 h-14 rounded-xl object-contain border border-[var(--border)] bg-white p-1"></div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div class="sm:col-span-2"><label class="label block mb-1">Nome legal / nome da empresa</label><input type="text" class="input text-xs sm:text-sm" x-model="settings.companyLegalName" placeholder="Ex.: Nome legal da empresa"></div>
@@ -408,7 +408,7 @@
                     <label class="label block mb-1">Logotipo da empresa</label>
                     <div class="flex items-center gap-3">
                       <div class="w-11 h-11 shrink-0 rounded-xl border border-[var(--border)] bg-white p-1 flex items-center justify-center overflow-hidden">
-                        <img :src="settings.companyLogo || './assets/icon-192.png'" alt="Logotipo da empresa" class="max-w-full max-h-full object-contain">
+                        <img :src="settings.companyLogo || window.AVIARIO_LOGO" alt="Logotipo da empresa" class="max-w-full max-h-full object-contain">
                       </div>
                       <div class="min-w-0"><p class="text-xs font-semibold">Identidade usada nos documentos</p><p class="text-[10px] text-[var(--text-dim)]">A mesma logo será usada no cabeçalho do site, relatórios e facturas.</p></div>
                     </div>

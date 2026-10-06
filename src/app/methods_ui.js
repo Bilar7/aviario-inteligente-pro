@@ -4,6 +4,7 @@ import * as SafeStorage from "../services/storage.js";
 export const methods = {
   getCloudSyncTitle: function(){
     var map={synced:'Dados actualizados. Clique para confirmar a actualização.',syncing:'A actualizar automaticamente…',connecting:'A verificar a ligação…',ready:'Actualizar dados agora',offline:'Sem ligação. A actualização será retomada automaticamente.',error:'Tentar actualizar novamente'};
+    if (this.cloudStatus === 'error' && this.cloudLastSyncError) return this.cloudLastSyncError;
     return map[this.cloudStatus||'ready'] || 'Actualizar dados';
   },
   openProfile: function() {

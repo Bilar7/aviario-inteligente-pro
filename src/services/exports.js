@@ -322,29 +322,7 @@ export function exportSmartExcel(farmData) {
   XLSX.writeFile(wb, fileName);
 };
 
-export const exportElementToPDF = generateProfessionalAviarioPDF;
-
 export { generateProfessionalAviarioPDF, generateFinanceReportPDF, generateOperationalArchivePDF };
-
-export async function importSmartExcel(file, callback) {
-  if (!file || typeof FileReader === 'undefined') return;
-  var reader = new FileReader();
-  reader.onload = function(event) {
-    try {
-      var data = new Uint8Array(event.target.result);
-      var workbook = XLSX.read(data, { type: 'array' });
-      var importedData = {};
-      workbook.SheetNames.forEach(function(sheetName) {
-        importedData[sheetName] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
-      });
-      callback && callback(null, importedData);
-    } catch (error) {
-      callback && callback(error);
-    }
-  };
-  reader.onerror = function(error) { callback && callback(error); };
-  reader.readAsArrayBuffer(file);
-}
 
 export { generateSaleInvoicePDF };
 

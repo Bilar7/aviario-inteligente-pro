@@ -1,5 +1,4 @@
 import "../services/firebase.js";
-import { exportDailyControlExcel } from "../services/exports.js";
 // Métodos: day
 export const methods = {
   activeProducts: function() {
@@ -96,7 +95,7 @@ export const methods = {
           self.toast('Controlo do Dia limpo!');
         });
       },
-  exportDailyExcel: function(dateStr) {
+  exportDailyExcel: async function(dateStr) {
     var self = this;
     var rows = [];
     this.activeProducts().forEach(function(p) {
@@ -112,7 +111,8 @@ export const methods = {
         self.totalVendido(r, p) !== null ? self.totalVendido(r, p) : '—'
       ]);
     });
-    var result = exportDailyControlExcel({
+    var exports = await import('../services/exports.js');
+    var result = exports.exportDailyControlExcel({
       settings: this.settings || {},
       date: dateStr,
       products: rows,

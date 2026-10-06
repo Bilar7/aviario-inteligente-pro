@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import sharp from 'sharp';
 import path from 'node:path';
 
 const files = [];
@@ -42,6 +43,18 @@ for (const file of files.filter((f) => f.endsWith('.js'))) {
 }
 
 if (!fs.readFileSync('index.html','utf8').match(/src="\.\/src\/main\.js\?v=1"/)) throw new Error('Asset version mismatch');
-if (!fs.readFileSync('public/sw.js','utf8').includes("aviario-pro-pwa-v3")) throw new Error('Service worker PWA cache not updated');
+const serviceWorker = fs.readFileSync('public/sw.js','utf8');
+if (!serviceWorker.includes("aviario-pro-pwa-v9")) throw new Error('Service worker PWA cache not updated');
+if (!serviceWorker.includes("./assets/aviario-inteligente-pro-logo.png")) throw new Error('Official app logo missing from service worker precache');
+if (!fs.readFileSync('src/services/firebase-config.js','utf8').includes("VITE_FIREBASE_DATABASE_ID || 'default'")) throw new Error('Firestore database ID is not configured');
+if (!fs.readFileSync('src/services/firebase.js','utf8').includes('}, firestoreDatabaseId);')) throw new Error('Firestore SDK is not using the configured database ID');
+const firebaseProjectConfig = JSON.parse(fs.readFileSync('firebase.json', 'utf8'));
+if (!Array.isArray(firebaseProjectConfig.firestore) || !firebaseProjectConfig.firestore.some((database) => database.database === 'default')) throw new Error('Firestore rules are not targeted at the existing database');
+if (sourceFiles.some((file) => fs.readFileSync(file, 'utf8').includes('importSmartExcel'))) throw new Error('Unused Excel import helper remains');
+
+for (const [file, size] of [['icon-192.png', 192], ['icon-512.png', 512], ['apple-touch-icon.png', 180], ['favicon.png', 48]]) {
+  const metadata = await sharp(`public/assets/${file}`).metadata();
+  if (metadata.width !== size || metadata.height !== size) throw new Error(`Unexpected ${file} dimensions`);
+}
 
 console.log(`Smoke test OK: ${sourceFiles.length} source files; no file exceeds 500 lines; Firebase atomic registration markers present; stale cache markers updated; static operational fallbacks checked.`);

@@ -4,6 +4,8 @@ export const state = {
   cloudLastSyncAt: 0,
   cloudLastSyncError: '',
   _isCloudSynced: false,
+  _firestoreDatabaseMissing: false,
+  _cloudRetryAfter: 0,
 
   // Sessão e Identificação
       currentUser: null,

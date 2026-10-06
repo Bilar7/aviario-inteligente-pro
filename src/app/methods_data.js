@@ -169,7 +169,7 @@ export const methods = {
   },
 
   _flushCloudOutbox: async function(farmId) {
-    if (this._cloudOutboxBusy || !farmId || !navigator.onLine) return false;
+    if (this._cloudOutboxBusy || !farmId || !navigator.onLine || this._firestoreDatabaseMissing || Date.now() < Number(this._cloudRetryAfter || 0)) return false;
     this._cloudOutboxBusy = true;
     try {
       var auth = window.getFirebaseAuth ? window.getFirebaseAuth() : null;
@@ -185,14 +185,16 @@ export const methods = {
       for (var i = 0; i < pending.length; i++) {
         var op = pending[i];
         if (!op || !op.collection || (!op.data && !op.delete)) continue;
+        var cloudWrite;
         if (op.delete) {
-          await db.collection('farms').doc(farmId).collection(op.collection).doc(String(op.id)).delete();
+          cloudWrite = db.collection('farms').doc(farmId).collection(op.collection).doc(String(op.id)).delete();
         } else if (op.collection === '__farm_root__') {
-          await db.collection('farms').doc(farmId).set(op.data, { merge: true });
+          cloudWrite = db.collection('farms').doc(farmId).set(op.data, { merge: true });
         } else {
           if (!op.id) continue;
-          await db.collection('farms').doc(farmId).collection(op.collection).doc(String(op.id)).set(op.data, { merge: true });
+          cloudWrite = db.collection('farms').doc(farmId).collection(op.collection).doc(String(op.id)).set(op.data, { merge: true });
         }
+        await this._withCloudTimeout(cloudWrite);
         this._cloudOutbox = this._cloudOutbox.filter(function(x) {
           return !(x.collection === op.collection && String(x.id || '') === String(op.id || '') && Number(x.queuedAt || 0) === Number(op.queuedAt || 0));
         });
@@ -249,19 +251,26 @@ export const methods = {
     } catch (e) { return null; }
   },
 
+  _withCloudTimeout: function(request) {
+    var timeoutId;
+    var timeout = new Promise(function(resolve, reject) {
+      timeoutId = setTimeout(function() {
+        reject(Object.assign(new Error('CLOUD_SYNC_TIMEOUT'), { code: 'cloud/timeout' }));
+      }, 15000);
+    });
+    return Promise.race([Promise.resolve(request), timeout]).finally(function() { clearTimeout(timeoutId); });
+  },
   _writeFarmCloud: function(farmId, payload) {
     var self = this, db = this.getDb();
     if (!db || !farmId || !payload) return Promise.reject(Object.assign(new Error('CLOUD_UNAVAILABLE'), { code: 'cloud/unavailable' }));
-    return db.collection('farms').doc(farmId).set(payload, { merge: true }).then(function() {
+    return this._withCloudTimeout(db.collection('farms').doc(farmId).set(payload, { merge: true })).then(function() {
       self._isCloudSynced = true;
       self.cloudStatus = 'synced';
       self.cloudLastSyncAt = Date.now();
       self.cloudLastSyncError = '';
       return true;
     }).catch(function(err) {
-      self._isCloudSynced = false;
-      self.cloudStatus = navigator.onLine ? 'error' : 'offline';
-      self.cloudLastSyncError = self._friendlyCloudError(err);
+      self._recordCloudFailure(err);
       throw err;
     });
   },
@@ -272,18 +281,18 @@ export const methods = {
     if (!db) throw Object.assign(new Error('CLOUD_UNAVAILABLE'), { code: 'cloud/unavailable' });
     var col = db.collection('farms').doc(farmId).collection(name);
     var safeItems = Array.isArray(items) ? items.filter(function(x) { return x && x.id; }) : [];
-    await Promise.all(safeItems.map(function(item) { return col.doc(String(item.id)).set(Object.assign({}, item, { farmId: farmId }), { merge: true }); }));
+    await this._withCloudTimeout(Promise.all(safeItems.map(function(item) { return col.doc(String(item.id)).set(Object.assign({}, item, { farmId: farmId }), { merge: true }); })));
     if (reconcileDeletes) {
-      var snap = await col.get();
+      var snap = await this._withCloudTimeout(col.get());
       var ids = new Set(safeItems.map(function(item) { return String(item.id); }));
-      await Promise.all((snap.docs || []).filter(function(d) { return !ids.has(d.id); }).map(function(d) { return d.ref && d.ref.delete ? d.ref.delete() : col.doc(d.id).delete(); }));
+      await this._withCloudTimeout(Promise.all((snap.docs || []).filter(function(d) { return !ids.has(d.id); }).map(function(d) { return d.ref && d.ref.delete ? d.ref.delete() : col.doc(d.id).delete(); })));
     }
   },
 
   _loadSubcollection: async function(farmId, name) {
     var db = this.getDb();
     if (!db) return [];
-    var snap = await db.collection('farms').doc(farmId).collection(name).get();
+    var snap = await this._withCloudTimeout(db.collection('farms').doc(farmId).collection(name).get());
     return (snap.docs || []).map(function(d) { return Object.assign({ id: d.id }, d.data() || {}); });
   },
 
@@ -366,6 +375,10 @@ export const methods = {
     if (this._persistTimeout) clearTimeout(this._persistTimeout);
     this._persistTimeout = setTimeout(async function() {
       try {
+        if (self._firestoreDatabaseMissing || Date.now() < Number(self._cloudRetryAfter || 0)) {
+          self.cloudStatus = navigator.onLine ? 'error' : 'offline';
+          return;
+        }
         var authUser = await self._ensureCloudSessionReady();
         if (!authUser) throw Object.assign(new Error('AUTH_NOT_READY'), { code: 'auth/not-ready' });
         await self._writeFarmCloud(farmId, payload);
@@ -377,8 +390,7 @@ export const methods = {
         self.cloudStatus = 'synced';
       } catch (err) {
         self._pendingCloudPayload = { farmId: farmId, payload: payload, error: self._friendlyCloudError(err) };
-        self.cloudStatus = navigator.onLine ? 'error' : 'offline';
-        self.cloudLastSyncError = self._friendlyCloudError(err);
+        self._recordCloudFailure(err);
       }
     }, 180);
   },
@@ -427,7 +439,9 @@ export const methods = {
     var silent = Boolean(options.silent);
     var farmId = this.currentFarmId;
     if (!this.currentUser || !farmId) { if (!silent) this.toast('Entre no sistema para sincronizar os dados.', 'error'); return false; }
+    if (options.automatic && (this._firestoreDatabaseMissing || Date.now() < Number(this._cloudRetryAfter || 0))) return false;
     if (this.syncBusy) return false;
+    if (!options.automatic) { this._firestoreDatabaseMissing = false; this._cloudRetryAfter = 0; }
     if (!navigator.onLine) { this.cloudStatus = 'offline'; if (!silent) this.toast('Sem ligação. Os dados continuam guardados neste dispositivo.', 'error'); return false; }
     this.syncBusy = true; this.cloudStatus = 'syncing'; this.cloudLastSyncError = '';
     if (this._persistTimeout) { clearTimeout(this._persistTimeout); this._persistTimeout = null; }
@@ -441,7 +455,7 @@ export const methods = {
       var db = this.getDb();
       if (!db) throw Object.assign(new Error('CLOUD_UNAVAILABLE'), { code: 'cloud/unavailable' });
       await this._flushCloudOutbox(farmId);
-      var snap = await db.collection('farms').doc(farmId).get();
+      var snap = await this._withCloudTimeout(db.collection('farms').doc(farmId).get());
       var cloud = snap.exists ? (snap.data() || {}) : null;
       var local = this._buildFarmPayload();
       var localTime = Date.parse(local.updatedAt || '') || 0;
@@ -458,19 +472,43 @@ export const methods = {
       this._cacheFarmPayload(farmId, this._buildFarmPayload());
       this._cacheSecureCollectionsLocal(farmId);
       this.syncBusy = false; this.cloudStatus = 'synced'; this.cloudLastSyncAt = Date.now();
+      this._firestoreDatabaseMissing = false; this._cloudRetryAfter = 0;
+      if (!Array.isArray(this._farmUnsubscribes) || !this._farmUnsubscribes.length) this.listenFarm(farmId).catch(function(){});
       if (!silent) this.toast('Dados actualizados com sucesso.');
       return true;
     } catch (err) {
-      this.syncBusy = false; this.cloudStatus = navigator.onLine ? 'error' : 'offline';
-      this.cloudLastSyncError = this._friendlyCloudError(err);
+      this.syncBusy = false;
+      this._recordCloudFailure(err);
       if (!silent) this.toast(this._friendlyCloudError(err), 'error');
       return false;
+    }
+  },
+
+  _isMissingFirestoreDatabase: function(err) {
+    var code = String(err && err.code || '').toLowerCase();
+    var message = String(err && err.message || '');
+    return (code.indexOf('not-found') !== -1 && /database/i.test(message)) || /database\s+['"]?\(default\)['"]?\s+(?:not found|does not exist)/i.test(message);
+  },
+
+  _recordCloudFailure: function(err) {
+    var databaseMissing = this._isMissingFirestoreDatabase(err);
+    this.cloudStatus = navigator.onLine ? 'error' : 'offline';
+    this.cloudLastSyncError = this._friendlyCloudError(err);
+    this._isCloudSynced = false;
+    this._firestoreDatabaseMissing = databaseMissing;
+    this._cloudRetryAfter = databaseMissing ? Number.MAX_SAFE_INTEGER : Date.now() + 120000;
+    var shouldStopListeners = databaseMissing || String(err && err.code || '') === 'cloud/timeout';
+    if (shouldStopListeners && Array.isArray(this._farmUnsubscribes)) {
+      this._farmUnsubscribes.forEach(function(unsubscribe) { try { unsubscribe(); } catch (e) {} });
+      this._farmUnsubscribes = [];
     }
   },
 
   _friendlyCloudError: function(err) {
     var code = String((err && err.code) || '');
     var msg = String((err && err.message) || '');
+    if (this._isMissingFirestoreDatabase(err)) return 'A base Firestore (default) não existe no projeto. Os dados continuam guardados neste dispositivo; crie a base no Firebase para ativar a sincronização.';
+    if (code === 'cloud/timeout') return 'A sincronização excedeu 15 segundos. Os dados continuam guardados neste dispositivo; verifique a ligação e a base Firestore.';
     if (!navigator.onLine || /offline|client is offline/i.test(msg) || code.indexOf('offline') !== -1) return 'Sem ligação. Os dados ficam guardados neste dispositivo e serão sincronizados depois.';
     if (code.indexOf('permission-denied') !== -1) return 'A sincronização foi recusada pelas regras do Firestore. Publique as regras da versão actual e entre novamente na conta.';
     if (code.indexOf('auth/not-ready') !== -1) return 'A sessão Firebase ainda não ficou pronta. Tente novamente em alguns segundos.';
@@ -482,7 +520,7 @@ export const methods = {
   listenFarm: async function(farmId) {
     var self = this, db = this.getDb();
     this.cloudStatus = navigator.onLine ? 'connecting' : 'offline';
-    if (!db || !farmId) return;
+    if (!db || !farmId || this._firestoreDatabaseMissing) return;
     if (navigator.onLine) {
       var auth = window.getFirebaseAuth ? window.getFirebaseAuth() : null;
       if (auth && !auth.currentUser) {
@@ -502,29 +540,29 @@ export const methods = {
         var data = doc.data() || {};
         self._applyFarmData(data, farmId);
         self._isCloudSynced = true; self.cloudStatus = 'synced'; self.cloudLastSyncAt = Date.now(); self.cloudLastSyncError = '';
-      }, function(err) { self.cloudStatus = 'error'; self.cloudLastSyncError = self._friendlyCloudError(err); self._isCloudSynced = false; }));
+      }, function(err) { self._recordCloudFailure(err); }));
 
       this._farmUnsubscribes.push(db.collection('farms').doc(farmId).collection('staff').onSnapshot(function(snap) {
         self.staff = (snap.docs || []).map(function(d) { return Object.assign({ id: d.id }, d.data() || {}); });
-      }, function(err) { self.cloudLastSyncError = self._friendlyCloudError(err); }));
+      }, function(err) { self._recordCloudFailure(err); }));
 
       this._farmUnsubscribes.push(db.collection('farms').doc(farmId).collection('sales').onSnapshot(function(snap) {
         var remote = (snap.docs || []).map(function(d) { return Object.assign({ id: d.id }, d.data() || {}); });
         self.sales = self._mergePendingCollection(farmId, 'sales', remote);
         self._isCloudSynced = true;
         self._loadOutbox(farmId);
-      }, function(err) { self.cloudLastSyncError = self._friendlyCloudError(err); }));
+      }, function(err) { self._recordCloudFailure(err); }));
 
       this._farmUnsubscribes.push(db.collection('farms').doc(farmId).collection('receipts').onSnapshot(function(snap) {
         var remote = (snap.docs || []).map(function(d) { return Object.assign({ id: d.id }, d.data() || {}); });
         self.receipts = self._mergePendingCollection(farmId, 'receipts', remote);
-      }, function(err) { self.cloudLastSyncError = self._friendlyCloudError(err); }));
+      }, function(err) { self._recordCloudFailure(err); }));
 
       this._farmUnsubscribes.push(db.collection('farms').doc(farmId).collection('archiveEvents').onSnapshot(function(snap) {
         var remote = (snap.docs || []).map(function(d) { return Object.assign({ id: d.id }, d.data() || {}); });
         self.archivedRecords = self._mergePendingCollection(farmId, 'archiveEvents', remote).sort(function(a, b) { return String(b.date || '').localeCompare(String(a.date || '')) || String(b.time || '').localeCompare(String(a.time || '')); });
         self._cacheSecureCollectionsLocal(farmId);
-      }, function(err) { self.cloudLastSyncError = self._friendlyCloudError(err); }));
+      }, function(err) { self._recordCloudFailure(err); }));
 
       if (this._isAdminRole()) {
         ['cashEntries', 'expenses', 'financialAudits'].forEach(function(name) {
@@ -534,12 +572,12 @@ export const methods = {
             if (name === 'cashEntries') self.cashLogs = merged;
             else if (name === 'expenses') self.expenses = merged;
             else self.financialAudits = merged;
-          }, function(err) { self.cloudLastSyncError = self._friendlyCloudError(err); }));
+          }, function(err) { self._recordCloudFailure(err); }));
         });
       }
     } catch (e) {
       this.cloudStatus = 'error';
-      this.cloudLastSyncError = this._friendlyCloudError(e);
+      this._recordCloudFailure(e);
     }
   }
 };

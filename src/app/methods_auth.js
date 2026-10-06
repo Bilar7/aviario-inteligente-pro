@@ -195,6 +195,8 @@ export const methods = {
         if (code === 'cloud/verification-failed') return 'O Firebase não confirmou todos os dados após o cadastro.';
         if (code === 'cloud/cleanup-failed') return 'O cadastro falhou e a conta incompleta não pôde ser limpa. Tente novamente.';
         if (code === 'auth/invalid-credential') return 'O e-mail ou a palavra-passe não estão correctos.';
+        if (code === 'profile/already-exists') return 'Já existe um perfil para esta conta. Volte ao login normal.';
+        if (code === 'profile/recovery-linked') return 'Esta conta já está associada a uma exploração. Não foi criada outra para evitar duplicar dados; é necessária recuperação administrativa do perfil existente.';
         if (code === 'auth/requires-recent-login') return 'Por segurança, confirme a sua palavra-passe actual para alterar a credencial.';
         var raw = String(error && error.message || '').replace(/^Firebase:\s*/i,'').trim();
         return raw && !/^failed to get document|^could not reach cloud firestore|^firebase/i.test(raw) ? 'Não foi possível concluir a operação. Tente novamente.' : 'Não foi possível concluir a operação. Tente novamente.';
@@ -231,6 +233,8 @@ export const methods = {
         var secret = String(this.loginSenha || '').trim();
         var credentialType = /^\d{4,8}$/.test(secret) ? 'pin' : 'password';
         this.loginError = '';
+        this.profileRecoveryAvailable = false;
+        this.profileRecoveryEmail = '';
         if (!input || !secret) { this.loginError = 'Introduza o nome de utilizador ou e-mail e a senha/PIN.'; return; }
         var authIdentifier = input;
         var identifierData = null;
@@ -266,10 +270,26 @@ export const methods = {
           var code = this._logFirebaseAuthError('login', e);
           this.authBusy = false;
           this.loginError = this._friendlyAuthError(e);
-          if (code === 'profile/not-found') this.loginError = 'A conta existe no Authentication, mas ainda não existe perfil no Firestore.';
+          if (code === 'profile/not-found') {
+            this.loginError = 'A conta existe no Authentication, mas ainda não existe perfil no Firestore.';
+            this.profileRecoveryAvailable = true;
+            this.profileRecoveryEmail = authIdentifier;
+          }
         }
       },
-  _completeFirstAdminRegistration: async function(authUser, payload) {
+      startProfileRecovery: function() {
+        if (!this.profileRecoveryAvailable) return;
+        this.signupError = '';
+        this.profileRecoveryMode = true;
+        this.showSignup = true;
+        this.suNome = '';
+        this.suFarmName = '';
+        this.suUsername = String(this.loginUsername || '').includes('@') ? '' : this.normalizeUsername(this.loginUsername);
+        this.suEmail = this.profileRecoveryEmail || '';
+        this.suSenha = '';
+        this.suSenhaConfirm = '';
+      },
+  _completeFirstAdminRegistration: async function(authUser, payload, preserveAuthOnFailure) {
         var db = this.getDb();
         if (!db || !authUser) throw Object.assign(new Error('Firebase indisponível.'), { code: 'cloud/unavailable' });
         var uid = authUser.uid;
@@ -294,7 +314,9 @@ export const methods = {
           // duas viagens à rede e podiam deixar o primeiro registo muito lento.
           await batch.commit();
         } catch (e) {
-          try { await authUser.delete(); } catch (cleanupErr) { throw Object.assign(new Error('Falha ao gravar Firestore e a conta Authentication não pôde ser limpa.'), { code: 'cloud/cleanup-failed', cause: e }); }
+          if (!preserveAuthOnFailure) {
+            try { await authUser.delete(); } catch (cleanupErr) { throw Object.assign(new Error('Falha ao gravar Firestore e a conta Authentication não pôde ser limpa.'), { code: 'cloud/cleanup-failed', cause: e }); }
+          }
           throw e;
         }
         profile._authUid = uid;
@@ -321,6 +343,7 @@ export const methods = {
   signupAdmin: async function() {
         if (this.authBusy) return;
         this.signupError = '';
+        var recoveryMode = this.profileRecoveryMode === true;
         var name = String(this.suNome || '').trim();
         var farmName = String(this.suFarmName || '').trim();
         var username = this.normalizeUsername ? this.normalizeUsername(this.suUsername) : String(this.suUsername || '').trim().toLowerCase();
@@ -340,24 +363,37 @@ export const methods = {
         this.authBusy = true;
         var farmId = 'farm_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
         try {
-          // O Firebase Authentication deve ser o primeiro passo do registo.
-          // Não fazemos uma leitura prévia do Firestore para verificar o utilizador,
-          // porque essa leitura podia esperar 10s e colocar o cliente em modo offline
-          // antes mesmo de a conta ser criada. O índice de login é gravado depois.
           var authEmail = email;
           var cloudSecret = this._cloudPasswordForSecret ? this._cloudPasswordForSecret(secret, credentialType) : secret;
-          var cred = await auth.createUserWithEmailAndPassword(authEmail, cloudSecret);
-          var authUser = cred.user;
+          var db = this.getDb();
+          if (!db) throw Object.assign(new Error('Firestore indisponível.'), { code: 'cloud/unavailable' });
+          var authUser;
+          if (recoveryMode) {
+            var existingCredential = await auth.signInWithEmailAndPassword(authEmail, cloudSecret);
+            authUser = existingCredential.user;
+            if (!authUser || !authUser.uid) throw Object.assign(new Error('Firebase não devolveu o UID.'), { code: 'auth/not-ready' });
+            var profileSnapshot = await db.collection('users').doc(authUser.uid).get();
+            if (profileSnapshot.exists) throw Object.assign(new Error('Já existe um perfil para esta conta.'), { code: 'profile/already-exists' });
+            var emailIdentifier = await db.collection('loginIdentifiers').doc(this._loginIdentifierKey(authEmail, 'email')).get();
+            var usernameIdentifier = await db.collection('loginIdentifiers').doc(username).get();
+            if (emailIdentifier.exists || usernameIdentifier.exists) throw Object.assign(new Error('Esta conta já está associada a uma exploração.'), { code: 'profile/recovery-linked' });
+          } else {
+            var credential = await auth.createUserWithEmailAndPassword(authEmail, cloudSecret);
+            authUser = credential.user;
+          }
           if (!authUser || !authUser.uid) throw Object.assign(new Error('Firebase não devolveu o UID.'), { code: 'auth/not-ready' });
-          var profile = await this._completeFirstAdminRegistration(authUser, { farmId, name, farmName, username, email, authEmail, credentialType });
-          this.lastGeneratedAccess = { username: username, accessCode: this.generateAccessCode ? this.generateAccessCode() : ('AIP-' + Date.now().toString().slice(-6)), email: email, authEmail: authEmail, credential: secret, credentialType: credentialType, roleType: 'super_admin', nome: name, phone: '' };
-          this.shareText = 'ACESSO AO AVIÁRIO INTELIGENTE PRO\n\n' + farmName + '\n\nUtilizador: ' + username + '\n' + (email ? 'E-mail: ' + email + '\n' : '') + (credentialType === 'pin' ? 'PIN inicial: ' : 'Palavra-passe inicial: ') + secret + '\n\nNo primeiro acesso, altere a credencial no seu perfil.';
+          var profile = await this._completeFirstAdminRegistration(authUser, { farmId, name, farmName, username, email, authEmail, credentialType }, recoveryMode);
+          if (!recoveryMode) {
+            this.lastGeneratedAccess = { username: username, accessCode: this.generateAccessCode ? this.generateAccessCode() : ('AIP-' + Date.now().toString().slice(-6)), email: email, authEmail: authEmail, credential: secret, credentialType: credentialType, roleType: 'super_admin', nome: name, phone: '' };
+            this.shareText = 'ACESSO AO AVIÁRIO INTELIGENTE PRO\n\n' + farmName + '\n\nUtilizador: ' + username + '\n' + (email ? 'E-mail: ' + email + '\n' : '') + (credentialType === 'pin' ? 'PIN inicial: ' : 'Palavra-passe inicial: ') + secret + '\n\nNo primeiro acesso, altere a credencial no seu perfil.';
+          }
           this._setSession(profile, farmId, true);
-          this.authBusy = false; this.showSignup = false; this.goTo('dashboard');
-          this.toast('Conta criada. Os dados do primeiro acesso estão visíveis para partilhar.');
+          this.authBusy = false; this.showSignup = false; this.profileRecoveryMode = false; this.profileRecoveryAvailable = false; this.goTo('dashboard');
+          this.toast(recoveryMode ? 'Perfil recuperado e nova exploração criada.' : 'Conta criada. Os dados do primeiro acesso estão visíveis para partilhar.');
           this.speak('Bem-vindo, ' + (profile.nome || name) + '.');
           this.listenFarm(farmId);
         } catch (e) {
+          if (recoveryMode) { try { if (auth.currentUser) await auth.signOut(); } catch (_) {} }
           this.authBusy = false;
           this._logFirebaseAuthError('signup', e);
           this.signupError = this._friendlyAuthError(e);

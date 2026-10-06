@@ -1,9 +1,10 @@
-const CACHE_NAME = 'aviario-pro-pwa-v3';
+const CACHE_NAME = 'aviario-pro-pwa-v9';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
-  './favicon.ico',
+  './assets/aviario-inteligente-pro-logo.png',
+  './assets/favicon.png',
   './assets/icon-192.png',
   './assets/icon-512.png',
   './assets/apple-touch-icon.png'

@@ -1,4 +1,5 @@
 import html2canvas from "html2canvas";
+import { APP_LOGO_PATH } from "./branding.js";
 function cp1252Bytes(value) {
   var map = {
     '€':128,'‚':130,'ƒ':131,'„':132,'…':133,'†':134,'‡':135,'ˆ':136,'‰':137,'Š':138,'‹':139,'Œ':140,'Ž':142,
@@ -101,7 +102,7 @@ function resolvePdfAsset(src) {
 function pdfBrandLogo(settings) {
   settings = settings || {};
   var custom = settings.companyLogo ? resolvePdfAsset(settings.companyLogo) : '';
-  var fallback = resolvePdfAsset('./assets/icon-192.png');
+  var fallback = resolvePdfAsset(APP_LOGO_PATH);
   if (!custom || custom === fallback) return pdfImageData(fallback);
   return pdfImageData(custom).then(function(image){
     return image || pdfImageData(fallback);
@@ -202,7 +203,7 @@ async function generateBrandedDocumentPDF(data) {
   var company=financeReportEscape(settings.companyLegalName||settings.farmName||'Aviário Inteligente Pro');
   var subtitle=financeReportEscape(settings.companySubtitle||settings.tagline||'Gestão Avícola');
   var metadata=financeReportEscape([settings.companyAddress||settings.location,settings.phone,settings.companyEmail].filter(Boolean).join(' · '));
-  var logo=financeReportEscape(settings.companyLogo||'./assets/icon-192.png');
+  var logo=financeReportEscape(settings.companyLogo||APP_LOGO_PATH);
   var holder=document.createElement('div');
   holder.style.position='fixed'; holder.style.left='-12000px'; holder.style.top='0'; holder.style.width='794px'; holder.style.zIndex='-1'; holder.style.pointerEvents='none';
   holder.innerHTML='<article class="invoice-sheet" style="width:794px;max-width:none;margin:0;border:0;border-radius:0;box-shadow:none"><header class="invoice-sheet-header"><div class="invoice-company-block"><div class="invoice-logo-box"><img src="'+logo+'" alt=""></div><div class="invoice-company-info"><h1>'+company+'</h1><p class="invoice-company-subtitle">'+subtitle+'</p><p class="invoice-company-contact">'+metadata+'</p></div></div><div class="invoice-number-block"><span>'+title+'</span><strong>'+period+'</strong><small>Emitido em '+financeReportEscape(new Date().toLocaleString('pt-PT'))+'</small></div></header>'+sectionMarkup+'<footer class="invoice-sheet-footer"><span>'+financeReportEscape(settings.reportFooter||'Documento emitido pelo Aviário Inteligente Pro.')+'</span><span>'+title+'</span></footer></article>';
@@ -288,7 +289,7 @@ async function captureFinanceReport(farmData) {
   var subtitle=financeReportEscape(settings.companySubtitle||settings.tagline||'Gestão Avícola');
   var meta=financeReportEscape([settings.companyAddress||settings.location,settings.phone,settings.companyEmail].filter(Boolean).join(' · '));
   var period=financeReportEscape(sum.periodo||farmData.period||'Todo o histórico');
-  var logo=resolvePdfAsset(settings.companyLogo||'./assets/icon-192.png');
+  var logo=resolvePdfAsset(settings.companyLogo||APP_LOGO_PATH);
   var methodLabels=[['Dinheiro','Dinheiro'],['M-Pesa','M-Pesa'],['e-Mola','e-Mola'],['Transferência','Transferência'],['Cartão','Cartão'],['Crédito','Crédito / Fiado'],['Outros','Outros']];
   var methodCards=methodLabels.map(function(item){return '<div class="fm-method"><span>'+financeReportEscape(item[1])+'</span><strong>'+financeReportMoney(methods[item[0]])+'</strong></div>';}).join('');
   var rows=transactions.map(function(t){
@@ -299,7 +300,7 @@ async function captureFinanceReport(farmData) {
   }).join('');
   var logoData='';
   try { var response=await fetch(logo,{cache:'no-store'}); if(response.ok) logoData=await dataUrlFromBlob(await response.blob()); } catch(e) {}
-  if(!logoData) logoData='./assets/icon-192.png';
+  if(!logoData) logoData=APP_LOGO_PATH;
 
   var holder=document.createElement('div');
   holder.style.position='fixed'; holder.style.left='-10000px'; holder.style.top='0'; holder.style.width='794px'; holder.style.background='#fff'; holder.style.zIndex='-1'; holder.style.pointerEvents='none';

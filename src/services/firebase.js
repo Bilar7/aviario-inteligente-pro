@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp, deleteApp } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence, browserSessionPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, deleteDoc, collection, getDocs, onSnapshot, writeBatch } from 'firebase/firestore';
-import { firebaseConfig } from './firebase-config.js';
+import { firebaseConfig, firestoreDatabaseId } from './firebase-config.js';
 
 let app = null;
 let auth = null;
@@ -30,9 +30,9 @@ function ensureDb() {
         experimentalForceLongPolling: true,
         useFetchStreams: false,
         localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-      });
+      }, firestoreDatabaseId);
     } catch (e) {
-      firestore = getFirestore(ensureApp());
+      firestore = getFirestore(ensureApp(), firestoreDatabaseId);
     }
   }
   return firestore;
