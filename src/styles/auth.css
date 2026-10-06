@@ -11,7 +11,7 @@
   position:relative;
   overflow:auto;
   isolation:isolate;
-  background:radial-gradient(ellipse at 12% 18%,rgba(34,197,94,.16),transparent 42%),linear-gradient(135deg,#eaf5ed 0%,#f8fbf9 50%,#dcece3 100%);
+  background:linear-gradient(rgba(247,251,248,.42),rgba(247,251,248,.50)),var(--aviary-background-image,none) center/cover no-repeat;
 }
 .auth-page-bg::before{
   content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
@@ -44,7 +44,7 @@
 .feature-icon-box svg{width:18px;height:18px}.feature-pill-label{font-size:.6875rem;font-weight:600;color:#334155;line-height:1.2}
 .theme-toggle-icon-btn{position:fixed;top:18px;right:20px;z-index:50}
 /* dark mode: the photo remains visible, the interface alone changes */
-body:not(.light) .auth-page-bg{background:radial-gradient(ellipse at 14% 12%,rgba(16,185,129,.18),transparent 42%),linear-gradient(135deg,#081915 0%,#0d211b 52%,#07110f 100%)}
+body:not(.light) .auth-page-bg{background:linear-gradient(rgba(3,12,9,.62),rgba(3,12,9,.72)),var(--aviary-background-image,none) center/cover no-repeat}
 body:not(.light) .auth-page-bg::before,body:not(.light) .auth-page-bg::after{background:transparent}
 body:not(.light) .auth-card{background:#101a18;color:#f8fafc;border-color:rgba(74,222,128,.22);box-shadow:0 22px 58px rgba(0,0,0,.30)}
 body:not(.light) .auth-logo-badge{background:#e6fff3;border-color:#101a18}
@@ -64,7 +64,7 @@ body:not(.light) .auth-page-bg .feature-icon-box{color:#4ade80;background:rgba(3
 
 /* BOOT — ecrã profissional antes da aplicação estar pronta */
 .boot-screen{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;overflow:hidden;background:#eef6f2}
-.boot-backdrop{position:absolute;inset:0;background:radial-gradient(ellipse at 18% 18%,rgba(16,185,129,.18),transparent 48%),linear-gradient(135deg,#eaf5ed 0%,#f8fbf9 52%,#dcece3 100%)}
+.boot-backdrop{position:absolute;inset:0;background:linear-gradient(rgba(247,251,248,.30),rgba(247,251,248,.40)),var(--aviary-background-image,none) center/cover no-repeat}
 .boot-backdrop::after{content:"";position:absolute;inset:0;background:rgba(255,255,255,.72)}
 .boot-panel{position:relative;z-index:1;width:min(390px,calc(100vw - 32px));padding:34px 30px 28px;border:1px solid rgba(255,255,255,.75);border-radius:28px;background:rgba(255,255,255,.94);box-shadow:0 24px 70px rgba(15,23,42,.18);text-align:center}
 .boot-logo{width:76px;height:76px;margin:-66px auto 16px;display:block;border-radius:22px;box-shadow:0 12px 26px rgba(16,185,129,.22)}
@@ -72,7 +72,7 @@ body:not(.light) .auth-page-bg .feature-icon-box{color:#4ade80;background:rgba(3
 .boot-progress{height:5px;margin:24px 0 11px;overflow:hidden;border-radius:999px;background:#dce8e2}.boot-progress span{display:block;width:38%;height:100%;border-radius:inherit;background:#16a34a;animation:boot-progress 1.15s ease-in-out infinite}
 .boot-status{font-size:.78rem;color:#64748b}.boot-brand{margin-top:18px;font-size:.62rem;font-weight:700;letter-spacing:.08em;color:#94a3b8}
 @keyframes boot-progress{0%{transform:translateX(-130%)}100%{transform:translateX(285%)}}
-body:not(.light) .boot-screen{background:#0a1210}.boot-screen.dark .boot-backdrop::after{background:rgba(5,12,10,.22)}
+body:not(.light) .boot-screen{background:#0a1210}body:not(.light) .boot-backdrop{background:linear-gradient(rgba(3,12,9,.42),rgba(3,12,9,.56)),var(--aviary-background-image,none) center/cover no-repeat}.boot-screen.dark .boot-backdrop::after{background:rgba(5,12,10,.22)}
 body:not(.light) .boot-panel{background:rgba(11,24,20,.94);border-color:rgba(74,222,128,.18);box-shadow:0 30px 80px rgba(0,0,0,.35)}
 body:not(.light) .boot-title{color:#f8fafc}body:not(.light) .boot-subtitle{color:#4ade80}
 body:not(.light) .boot-status{color:#a9bdb6}body:not(.light) .boot-brand{color:#71837d}

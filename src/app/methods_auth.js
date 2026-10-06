@@ -261,7 +261,15 @@ export const methods = {
         try {
           if (typeof auth.setPersistence === 'function') await auth.setPersistence('local');
           var cloudSecret = this._cloudPasswordForSecret ? this._cloudPasswordForSecret(secret, credentialType) : secret;
-          var cred = await auth.signInWithEmailAndPassword(authIdentifier, cloudSecret);
+          var cred;
+          try {
+            cred = await auth.signInWithEmailAndPassword(authIdentifier, cloudSecret);
+          } catch (credentialError) {
+            var canTryNumericPassword = input.includes('@') && !identifierData && credentialType === 'pin' && /^\d{4,8}$/.test(secret);
+            var credentialErrorCode = this._normalizeFirebaseErrorCode(credentialError);
+            if (!canTryNumericPassword || credentialErrorCode !== 'auth/invalid-credential') throw credentialError;
+            cred = await auth.signInWithEmailAndPassword(authIdentifier, secret);
+          }
           var profile = await this._finalizeSignedInProfile(cred.user, secret);
           this.authBusy = false;
           this.toast('Bem-vindo, ' + (profile.nome || profile.name || 'utilizador') + '!');

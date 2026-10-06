@@ -1,7 +1,7 @@
 body.light .auth-page-bg {
   background:
-    linear-gradient(115deg, rgba(255,255,255,.10) 0%, rgba(255,255,255,.04) 55%, rgba(255,255,255,0) 100%),
-    url("https://i.pinimg.com/736x/fc/43/00/fc430077a0ef00efdf4d26e667ea5a43.jpg") center/cover no-repeat;
+    linear-gradient(rgba(247,251,248,.42),rgba(247,251,248,.50)),
+    var(--aviary-background-image,none) center/cover no-repeat;
 }.auth-card-container {
   position: relative;
   width: 100%;
