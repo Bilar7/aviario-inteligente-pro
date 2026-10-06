@@ -24,7 +24,7 @@
   padding:3rem 1.25rem 1.25rem;box-shadow:0 18px 46px rgba(15,23,42,.16);
   text-align:center;
 }
-.auth-logo-badge{position:absolute;top:0;width:110px;height:110px;border-radius:9999px;background:transparent;border:0;box-shadow:none;display:flex;align-items:center;justify-content:center;z-index:20;padding:0;overflow:visible;transform:translateY(-6px)}.auth-logo-badge img{display:block;width:100%;height:100%;object-fit:contain;padding:0;margin:0;background:transparent}
+.auth-logo-badge{position:absolute;top:0;width:110px;height:110px;border-radius:50%;background:#fff;border:3px solid #fff;box-shadow:0 8px 24px rgba(15,23,42,.18);display:flex;align-items:center;justify-content:center;z-index:20;padding:0;overflow:hidden;transform:translateY(-6px)}.auth-logo-badge img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;padding:0;margin:0;background:transparent}
 .brand-main-title{font-size:1.55rem;font-weight:900;letter-spacing:.05em;color:#0f172a;line-height:1.1}
 .brand-sub-title{font-size:1rem;font-weight:700;color:#16a34a;margin-top:.15rem}
 .brand-tagline{font-size:.75rem;color:#475569;margin-top:.4rem}

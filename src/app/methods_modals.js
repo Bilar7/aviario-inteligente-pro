@@ -6,6 +6,7 @@ export const methods = {
           this.toast('O seu perfil não tem permissão para criar lotes.', 'error');
           return;
         }
+        this.editingLote = null;
         this.showNewLote = true;
         var year = new Date().getFullYear();
         var next = String((this.lotes || []).length + 1).padStart(3, '0');
@@ -22,6 +23,37 @@ export const methods = {
       },
       closeNewLote: function() {
         this.showNewLote = false;
+        this.editingLote = null;
+      },
+      startEditLote: function(lote) {
+        if (!this.canCreateOperationalLote()) {
+          this.toast('O seu perfil não tem permissão para editar lotes.', 'error');
+          return;
+        }
+        if (!lote) return;
+        this.editingLote = lote;
+        this.newLoteCode = lote.code || '';
+        this.newLoteBreed = lote.breed || lote.type || 'Frango de corte';
+        this.newLoteEntryDate = lote.entryDate || this.todayStr();
+        this.newLoteBirds = Number(lote.initialBirds) || '';
+        this.newLoteAvgWeight = Number(lote.avgWeight) || '';
+        this.newLoteNotes = lote.notes || '';
+        this.newLoteSupplier = lote.supplier || '';
+        this.newLoteInitialAge = Number(lote.initialAge) || 0;
+        this.newLotePricePerChick = Number(lote.pricePerChick) || '';
+        this.newLoteCostChicks = Number(lote.costChicks) || 0;
+        this.selectedLote = null;
+        this.showNewLote = true;
+      },
+      getLoteLinkedRecords: function(lote) {
+        if (!lote) return [];
+        var collections = ['mortalityLogs', 'weightLogs', 'feedLogs', 'sales', 'expenses', 'healthLogs'];
+        return collections.reduce(function(records, collection) {
+          return records.concat((this[collection] || []).filter(function(record) {
+            return String(record.loteId || '') === String(lote.id) ||
+              (!record.loteId && String(record.loteCode || '') === String(lote.code || ''));
+          }));
+        }.bind(this), []);
       },
       saveNewLote: function() {
         if (!this.canCreateOperationalLote()) {
@@ -35,14 +67,35 @@ export const methods = {
         }
         var entryDate = this.newLoteEntryDate || this.todayStr();
         var code = String(this.newLoteCode || '').trim() || ('LT-' + Math.floor(1000 + Math.random() * 9000));
-        var duplicate = (this.lotes || []).some(function(l) { return String(l.code || '').toLowerCase() === code.toLowerCase(); });
+        var editing = this.editingLote;
+        var current = editing && (this.lotes || []).find(function(l) { return l.id === editing.id; });
+        if (editing && !current) {
+          this.toast('Este lote já não existe. Atualize a lista e tente novamente.', 'error');
+          this.closeNewLote();
+          return;
+        }
+        var duplicate = (this.lotes || []).some(function(l) {
+          return l.id !== (current && current.id) && String(l.code || '').toLowerCase() === code.toLowerCase();
+        });
         if (duplicate) {
           this.toast('Já existe um lote com o código ' + code + '.', 'error');
           return;
         }
+        var birds = Math.floor(Number(this.newLoteBirds) || 0);
+        if (current && birds < this.getLoteMortality(current.id) + this.getLoteSoldBirds(current.id)) {
+          this.toast('A quantidade inicial não pode ser inferior às aves já mortas ou vendidas.', 'error');
+          return;
+        }
+        var linkedRecords = current ? this.getLoteLinkedRecords(current) : [];
         var avgWeight = Number(this.newLoteAvgWeight) || 0;
-        var lote = {
+        var lote = current || {
           id: 'lote_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          createdBy: this.currentUser ? (this.currentUser.username || this.currentUser.nome || 'Sistema') : 'Sistema'
+        };
+        var previousCode = lote.code;
+        Object.assign(lote, {
           code: code,
           breed: this.newLoteBreed || 'Frango de corte',
           entryDate: entryDate,
@@ -52,19 +105,44 @@ export const methods = {
           initialAge: Math.max(0, Number(this.newLoteInitialAge) || 0),
           pricePerChick: Math.max(0, Number(this.newLotePricePerChick) || 0),
           costChicks: Math.max(0, (Number(this.newLoteBirds)||0) * (Number(this.newLotePricePerChick)||0)),
-          status: 'active',
-          notes: String(this.newLoteNotes || '').trim(),
-          createdAt: new Date().toISOString(),
-          createdBy: this.currentUser ? (this.currentUser.username || this.currentUser.nome || 'Sistema') : 'Sistema'
-        };
+          notes: String(this.newLoteNotes || '').trim()
+        });
         if (!Array.isArray(this.lotes)) this.lotes = [];
-        this.lotes.unshift(lote);
+        if (current) {
+          if (previousCode !== code) {
+            linkedRecords.forEach(function(record) { record.loteCode = code; });
+          }
+        } else {
+          this.lotes.unshift(lote);
+        }
         this.selectedLoteId = lote.id;
         this.selectedLote = null;
         this.persistFarm();
         this.showNewLote = false;
-        this.loteStatusFilter = 'active';
-        this.toast('Lote #' + lote.code + ' criado com sucesso.');
+        this.editingLote = null;
+        if (!current) this.loteStatusFilter = 'active';
+        this.toast(current ? 'Lote #' + lote.code + ' atualizado com sucesso.' : 'Lote #' + lote.code + ' criado com sucesso.');
+      },
+      deleteLote: function(lote) {
+        if (!this.canCreateOperationalLote()) {
+          this.toast('O seu perfil não tem permissão para apagar lotes.', 'error');
+          return;
+        }
+        if (!lote) return;
+        var linkedRecords = this.getLoteLinkedRecords(lote);
+        if (linkedRecords.length) {
+          this.toast('Não é possível apagar este lote porque já tem movimentos associados. Edite-o para corrigir os dados.', 'error');
+          return;
+        }
+        this.confirm('Apagar o lote #' + lote.code + '? Esta ação não pode ser desfeita.', function() {
+          this.lotes = (this.lotes || []).filter(function(item) { return item.id !== lote.id; });
+          this.selectedLote = null;
+          this.editingLote = null;
+          this.selectedLoteId = (this.lotes.find(function(item) { return item.status === 'active'; }) || this.lotes[0] || {}).id || '';
+          this.logAudit('APAGAR_LOTE', 'Apagou o lote #' + lote.code);
+          this.persistFarm();
+          this.toast('Lote #' + lote.code + ' apagado.');
+        }.bind(this));
       },
   openModalSaida: function() {
         this.showModalSaida = true;

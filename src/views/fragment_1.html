@@ -97,7 +97,7 @@
     <div class="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
       <div class="flex items-center gap-2 min-w-0">
         <span class="text-2xl shrink-0">🐣</span>
-        <h3 id="new-lote-title" class="text-base font-bold text-[var(--primary-light)]">➕ Criar Novo Lote de Frangos</h3>
+        <h3 id="new-lote-title" class="text-base font-bold text-[var(--primary-light)]" x-text="editingLote ? 'Editar Lote de Frangos' : 'Criar Novo Lote de Frangos'"></h3>
       </div>
       <button type="button" class="text-xl text-[var(--text-dim)] hover:text-white shrink-0 ml-3" @click="closeNewLote()" aria-label="Fechar">✕</button>
     </div>
@@ -178,7 +178,8 @@
       <div class="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-color)]">
         <button type="button" class="btn btn-ghost btn-sm text-xs" @click="closeNewLote()">Cancelar</button>
         <button type="submit" class="btn btn-primary btn-sm text-xs font-bold px-5">
-          <span x-html="getIcon('plus')"></span> Criar Lote
+          <span x-html="getIcon(editingLote ? 'edit' : 'plus')"></span>
+          <span x-text="editingLote ? 'Guardar Alterações' : 'Criar Lote'"></span>
         </button>
       </div>
     </form>

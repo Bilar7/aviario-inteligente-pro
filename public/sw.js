@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aviario-pro-pwa-v10';
+const CACHE_NAME = 'aviario-pro-pwa-v11';
 const APP_SHELL = [
   './',
   './index.html',
