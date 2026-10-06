@@ -65,8 +65,7 @@ export const methods = {
         var sum = this.getEliteFinSummary(this.finPeriod);
         var trans = this.getFilteredTransactions();
         var smart = this.getSmartKPIs();
-        var exports = await import('../services/exports.js');
-        var result = exports.exportFinanceExcel({
+        var result = await window.exportFinanceExcel({
           settings: this.settings || {},
           period: this.finPeriod,
           today: this.todayStr(),

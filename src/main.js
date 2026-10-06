@@ -7,6 +7,7 @@ import "./styles/utilities.css";
 import "./styles/responsive.css";
 import { createAppState } from "./app/store.js";
 import { APP_LOGO_PATH } from "./services/branding.js";
+import * as exportsService from './services/exports.js';
 import "./services/firebase.js";
 import "./services/icons.js";
 import "./services/i18n.js";
@@ -19,8 +20,6 @@ const manifestLink = document.createElement('link');
 manifestLink.rel = 'manifest';
 manifestLink.href = new URL('manifest.json', publicBaseUrl).href;
 document.head.appendChild(manifestLink);
-const loadExports = () => import('./services/exports.js');
-
 import html1 from './views/fragment_1.html?raw';
 import html1b from './views/fragment_1b.html?raw';
 import html2 from './views/fragment_2.html?raw';
@@ -49,11 +48,13 @@ Alpine.data("aviarioApp", createAppState);
 document.body.setAttribute("x-data", "aviarioApp()");
 document.body.setAttribute("x-init", "init()");
 window.aviarioApp = createAppState;
-window.exportSmartExcel = (...args) => loadExports().then(module => module.exportSmartExcel(...args));
-window.generateProfessionalAviarioPDF = (...args) => loadExports().then(module => module.generateProfessionalAviarioPDF(...args));
-window.generateSaleInvoicePDF = (...args) => loadExports().then(module => module.generateSaleInvoicePDF(...args));
-window.generateFinanceReportPDF = (...args) => loadExports().then(module => module.generateFinanceReportPDF(...args));
-window.generateOperationalArchivePDF = (...args) => loadExports().then(module => module.generateOperationalArchivePDF(...args));
+window.exportSmartExcel = (...args) => Promise.resolve().then(() => exportsService.exportSmartExcel(...args));
+window.exportDailyControlExcel = (...args) => Promise.resolve().then(() => exportsService.exportDailyControlExcel(...args));
+window.exportFinanceExcel = (...args) => Promise.resolve().then(() => exportsService.exportFinanceExcel(...args));
+window.generateProfessionalAviarioPDF = (...args) => Promise.resolve().then(() => exportsService.generateProfessionalAviarioPDF(...args));
+window.generateSaleInvoicePDF = (...args) => Promise.resolve().then(() => exportsService.generateSaleInvoicePDF(...args));
+window.generateFinanceReportPDF = (...args) => Promise.resolve().then(() => exportsService.generateFinanceReportPDF(...args));
+window.generateOperationalArchivePDF = (...args) => Promise.resolve().then(() => exportsService.generateOperationalArchivePDF(...args));
 
 // Não interceptar beforeinstallprompt: o navegador controla a apresentação da instalação.
 window.addEventListener('appinstalled', () => {
@@ -71,5 +72,16 @@ if (boot) boot.remove();
 
 const canRegisterServiceWorker = "serviceWorker" in navigator && location.protocol !== "file:" && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1");
 if (canRegisterServiceWorker) {
-  navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).catch(() => {});
+  const hasPreviousController = Boolean(navigator.serviceWorker.controller);
+  if (hasPreviousController) {
+    let reloadingForWorkerUpdate = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloadingForWorkerUpdate) return;
+      reloadingForWorkerUpdate = true;
+      window.location.reload();
+    });
+  }
+  navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' })
+    .then(registration => registration.update().catch(() => {}))
+    .catch(() => {});
 }

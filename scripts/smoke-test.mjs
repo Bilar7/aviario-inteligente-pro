@@ -44,7 +44,7 @@ for (const file of files.filter((f) => f.endsWith('.js'))) {
 
 if (!fs.readFileSync('index.html','utf8').match(/src="\.\/src\/main\.js\?v=1"/)) throw new Error('Asset version mismatch');
 const serviceWorker = fs.readFileSync('public/sw.js','utf8');
-if (!serviceWorker.includes("aviario-pro-pwa-v11")) throw new Error('Service worker PWA cache not updated');
+if (!serviceWorker.includes("aviario-pro-pwa-v12")) throw new Error('Service worker PWA cache not updated');
 if (!serviceWorker.includes("./assets/aviario-inteligente-pro-logo.png")) throw new Error('Official app logo missing from service worker precache');
 if (!fs.readFileSync('src/services/firebase-config.js','utf8').includes("VITE_FIREBASE_DATABASE_ID || 'default'")) throw new Error('Firestore database ID is not configured');
 if (!fs.readFileSync('src/services/firebase.js','utf8').includes('}, firestoreDatabaseId);')) throw new Error('Firestore SDK is not using the configured database ID');

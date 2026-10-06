@@ -111,8 +111,7 @@ export const methods = {
         self.totalVendido(r, p) !== null ? self.totalVendido(r, p) : '—'
       ]);
     });
-    var exports = await import('../services/exports.js');
-    var result = exports.exportDailyControlExcel({
+    var result = await window.exportDailyControlExcel({
       settings: this.settings || {},
       date: dateStr,
       products: rows,
