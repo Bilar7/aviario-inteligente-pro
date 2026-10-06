@@ -502,8 +502,8 @@ body.light .badge-success{background:#DCFCE7 !important;color:#15803D !important
 
 
 /* Identidade da aplicação aplicada ao cabeçalho. */
-.company-header-logo{width:32px;height:32px;min-width:32px;min-height:32px;border-radius:9px}
-.company-header-logo img{display:block;width:100%;height:100%}
+.company-header-logo{width:44px;height:44px;min-width:44px;min-height:44px;border-radius:12px;background:transparent;border:0;box-shadow:none;overflow:hidden;padding:0}
+.company-header-logo img{display:block;width:100%;height:100%;object-fit:contain;padding:0;margin:0;background:transparent}
 
 @media print{
   @page{size:A4;margin:12mm}
