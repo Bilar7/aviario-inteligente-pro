@@ -13,6 +13,10 @@ import "./services/i18n.js";
 
 window.AVIARIO_LOGO = APP_LOGO_PATH;
 window.ICONS.logo = '<img src="' + APP_LOGO_PATH + '" alt="" class="w-full h-full object-contain">';
+const manifestLink = document.createElement('link');
+manifestLink.rel = 'manifest';
+manifestLink.href = new URL('manifest.json', new URL(import.meta.env.BASE_URL, location.href)).href;
+document.head.appendChild(manifestLink);
 const loadExports = () => import('./services/exports.js');
 
 import html1 from './views/fragment_1.html?raw';

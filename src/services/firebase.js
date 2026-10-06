@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp, deleteApp } from 'firebase/app';
-import { getAuth, setPersistence, browserLocalPersistence, browserSessionPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence, browserSessionPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, deleteDoc, collection, getDocs, onSnapshot, writeBatch } from 'firebase/firestore';
 import { firebaseConfig, firestoreDatabaseId } from './firebase-config.js';
 
@@ -45,6 +45,7 @@ function authAdapter() {
     setPersistence: (type) => setPersistence(instance, type === 'session' ? browserSessionPersistence : browserLocalPersistence),
     signInWithEmailAndPassword: (email, password) => signInWithEmailAndPassword(instance, email, password),
     createUserWithEmailAndPassword: (email, password) => createUserWithEmailAndPassword(instance, email, password),
+    sendPasswordResetEmail: (email) => sendPasswordResetEmail(instance, email),
     signOut: () => signOut(instance),
     reauthenticateWithPassword: (email, password) => reauthenticateWithCredential(instance, EmailAuthProvider.credential(email, password)),
     updatePassword: (user, password) => updatePassword(user, password),

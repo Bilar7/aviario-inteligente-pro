@@ -349,7 +349,7 @@
                 <input type="checkbox" x-model="rememberMe" class="rounded border-slate-600 text-emerald-500 focus:ring-0">
                 <span>Lembrar-me</span>
               </label>
-              <a href="#" class="text-emerald-500 font-medium hover:underline text-[11px]" @click.prevent="toast('Contacte o Administrador para redefinir o acesso.')">Esqueceu a palavra-passe?</a>
+              <a href="#" class="text-emerald-500 font-medium hover:underline text-[11px]" :aria-disabled="authBusy" @click.prevent="requestPasswordReset()">Esqueceu a palavra-passe?</a>
             </div>
 
             <!-- Botão Principal ENTRAR -->

@@ -194,7 +194,7 @@ export const methods = {
         if (code === 'permission-denied') return 'Authentication funcionou, mas o Firestore recusou a gravação. Publique as regras de teste/produção correspondentes.';
         if (code === 'cloud/verification-failed') return 'O Firebase não confirmou todos os dados após o cadastro.';
         if (code === 'cloud/cleanup-failed') return 'O cadastro falhou e a conta incompleta não pôde ser limpa. Tente novamente.';
-        if (code === 'auth/invalid-credential') return 'O e-mail ou a palavra-passe não estão correctos.';
+        if (code === 'auth/invalid-credential') return 'O Firebase não aceitou o e-mail e a palavra-passe/PIN. Confirme os dados iniciais da conta ou use “Esqueceu a palavra-passe?” para redefinir.';
         if (code === 'profile/already-exists') return 'Já existe um perfil para esta conta. Volte ao login normal.';
         if (code === 'profile/recovery-linked') return 'Esta conta já está associada a uma exploração. Não foi criada outra para evitar duplicar dados; é necessária recuperação administrativa do perfil existente.';
         if (code === 'auth/requires-recent-login') return 'Por segurança, confirme a sua palavra-passe actual para alterar a credencial.';
@@ -288,6 +288,32 @@ export const methods = {
         this.suEmail = this.profileRecoveryEmail || '';
         this.suSenha = '';
         this.suSenhaConfirm = '';
+      },
+      requestPasswordReset: async function() {
+        if (this.authBusy) return;
+        var email = String(this.loginUsername || '').trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          this.loginError = 'Introduza primeiro o e-mail da conta para receber a ligação de reposição.';
+          return;
+        }
+        var auth = window.getFirebaseAuth ? window.getFirebaseAuth() : null;
+        if (!auth || typeof auth.sendPasswordResetEmail !== 'function') {
+          this.loginError = 'A recuperação de palavra-passe não está disponível neste momento.';
+          return;
+        }
+        this.authBusy = true;
+        this.loginError = '';
+        try {
+          await auth.sendPasswordResetEmail(email);
+          this.toast('Se existir uma conta associada a este e-mail, será enviada uma ligação de reposição.');
+        } catch (error) {
+          var code = this._logFirebaseAuthError('password-reset', error);
+          this.loginError = code === 'auth/network-request-failed'
+            ? 'Não foi possível contactar o Firebase. Verifique a ligação à Internet e tente novamente.'
+            : 'Não foi possível enviar a ligação de reposição. Confirme o e-mail e tente novamente.';
+        } finally {
+          this.authBusy = false;
+        }
       },
   _completeFirstAdminRegistration: async function(authUser, payload, preserveAuthOnFailure) {
         var db = this.getDb();
