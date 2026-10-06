@@ -88,10 +88,18 @@
                     </div>
                     <span class="px-2.5 py-1 text-[10px] font-bold rounded-full shrink-0" :class="getLoteHealthBadge(l).class" x-text="getLoteHealthBadge(l).label"></span>
                   </div>
-                  <button type="button" class="btn btn-primary btn-sm w-full text-xs font-bold flex items-center justify-center gap-1.5 shadow-md" @click="openLoteDetails(l)">
-                    <span x-html="getIcon('chevronRight')"></span>
-                    <span>Ver detalhes</span>
-                  </button>
+                  <div class="flex items-center gap-2">
+                    <button type="button" class="btn btn-primary btn-sm min-w-0 flex-1 text-xs font-bold flex items-center justify-center gap-1.5 shadow-md" @click="openLoteDetails(l)">
+                      <span x-html="getIcon('chevronRight')"></span>
+                      <span>Ver detalhes</span>
+                    </button>
+                    <button type="button" class="record-action-btn shrink-0" @click="startEditLote(l)" title="Editar lote" aria-label="Editar lote">
+                      <span x-html="getIcon('edit')"></span>
+                    </button>
+                    <button type="button" class="record-action-btn danger shrink-0" @click="deleteLote(l)" title="Apagar lote" aria-label="Apagar lote">
+                      <span x-html="getIcon('trash')"></span>
+                    </button>
+                  </div>
                 </article>
               </template>
             </div>
