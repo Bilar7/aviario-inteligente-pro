@@ -215,7 +215,7 @@
 
 <!-- MODAL PARTILHAR CREDENCIAIS -->
 <template x-teleport="body">
-<div x-show="sharingUser && !navigator.share" x-cloak class="app-modal" x-transition.opacity role="dialog" aria-modal="true">
+<div x-show="sharingUser" x-cloak class="app-modal" x-transition.opacity role="dialog" aria-modal="true">
   <div class="app-modal-card modal-md p-5 space-y-4">
     <div class="flex items-center justify-between"><div><h3 class="font-bold">Partilhar credenciais</h3><p class="text-xs text-[var(--text-dim)]">Escolha uma aplicação para enviar ou copie a mensagem.</p></div><button type="button" class="btn btn-ghost btn-sm" @click="sharingUser=null"><span x-html="getIcon('x')"></span></button></div>
     <textarea class="input text-xs w-full min-h-[130px]" x-model="shareText"></textarea>

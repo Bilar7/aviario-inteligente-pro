@@ -327,12 +327,23 @@ export const methods = {
         var responsible = (this.settings && this.settings.signatureName) || (this.currentUser && this.currentUser.nome) || 'Responsável';
         var contact = (this.settings && (this.settings.phone || this.settings.companyEmail)) || '';
         var appUrl = (window.location && /^https?:$/.test(window.location.protocol)) ? window.location.origin + window.location.pathname : 'Abra a aplicação pelo endereço oficial da empresa.';
+        var accessEmail = user.email || user.authEmail || '';
         if (!secret) {
-          this.toast('A credencial original não é recuperada por segurança. Use “Criar nova conta de colaborador” para gerar um novo acesso e partilhe-a em seguida.', 'info');
-          this.editStaffAccess(user);
+          var auth = window.getFirebaseAuth ? window.getFirebaseAuth() : null;
+          if (!accessEmail || !auth || typeof auth.sendPasswordResetEmail !== 'function') {
+            this.toast('Não foi possível solicitar a reposição. Confirme o e-mail da conta.', 'error');
+            return;
+          }
+          try {
+            await auth.sendPasswordResetEmail(accessEmail);
+            this.shareText = 'ACESSO AO AVIÁRIO INTELIGENTE PRO\n\nOlá, ' + (user.nome || user.name || 'colaborador') + '.\n\nFoi enviada uma ligação segura de reposição da palavra-passe para ' + accessEmail + '. Verifique a caixa de entrada e o spam para definir uma nova palavra-passe.\n\nAcesso: ' + appUrl + '\n\n' + farm + '\nBilar DigitalTech Solutions';
+            this.sharingUser = user;
+            this.toast('Ligação de reposição enviada para o e-mail do colaborador.');
+          } catch (error) {
+            this.toast('Não foi possível enviar a reposição. Verifique a ligação e o e-mail da conta.', 'error');
+          }
           return;
         }
-        var accessEmail = user.email || user.authEmail || '';
         var text = 'ACESSO AO AVIÁRIO INTELIGENTE PRO\n\n' +
           farm + '\n' + subtitle + '\n\n' +
           'Olá, ' + (user.nome || user.name || 'colaborador') + '!\n\n' +
